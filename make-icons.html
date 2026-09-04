@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rithmomachia — icon exporter</title>
+<style>
+body{margin:0;padding:30px 20px;background:#14100c;color:#f0e3ca;
+  font-family:Georgia,'Times New Roman',serif;display:flex;flex-direction:column;
+  align-items:center;gap:18px;min-height:100vh}
+h1{font-size:15px;letter-spacing:3px;color:#e2b45c;font-weight:normal;margin:0}
+p{max-width:460px;font-size:12.5px;line-height:1.7;color:#a8967a;text-align:center;margin:0}
+.shelf{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:9px}
+canvas{background:#0d0a07;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.55)}
+figcaption{font-size:10px;letter-spacing:1.4px;color:#a8967a}
+a.btn{display:block;text-decoration:none;text-align:center;font-size:10.5px;
+  letter-spacing:1.1px;color:#e2b45c;border:1px solid #e2b45c;border-radius:9px;
+  padding:9px 16px;font-family:inherit}
+.note{font-size:11px;color:#6d6250;max-width:460px;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<h1>ICON EXPORTER</h1>
+<p>Android launchers prefer PNG. Click each button, then drop the three files
+next to <code>index.html</code> before you upload. The manifest already
+references them.</p>
+<div class="shelf" id="shelf"></div>
+<p class="note">This file is a one-off tool — it is not part of the game and does not
+need uploading. If you ever redesign <code>icon.svg</code>, the copy of the artwork
+inside this file has to be updated to match.</p>
+
+<script>
+/* A copy of icon.svg. Inlined as a string so the canvas isn't tainted when
+   this page is opened straight off disk (file:// blocks fetch). */
+const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfa065"/><stop offset="48%" stop-color="#b07e42"/>
+      <stop offset="100%" stop-color="#8f6230"/></linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8f6231"/><stop offset="100%" stop-color="#5c3a17"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0cd82"/><stop offset="100%" stop-color="#c8974a"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#14100c"/>
+  <rect x="56" y="56" width="400" height="400" rx="52" fill="url(#frame)"/>
+  <rect x="86" y="86" width="340" height="340" rx="30" fill="url(#wood)"/>
+  <g stroke="rgba(48,25,4,0.45)" stroke-width="3">
+    <path d="M171 86v340M256 86v340M341 86v340"/>
+    <path d="M86 171h340M86 256h340M86 341h340"/>
+  </g>
+  <rect x="108" y="108" width="54" height="54" rx="7" fill="#231708" stroke="#0c0703" stroke-width="4"/>
+  <path d="M213.5 110 L246 160 L181 160 Z" fill="#231708" stroke="#0c0703" stroke-width="4"/>
+  <circle cx="299" cy="365" r="28" fill="#efdcaf" stroke="#a6813c" stroke-width="4"/>
+  <g fill="url(#gold)" stroke="#7a5418" stroke-width="3" stroke-linejoin="round">
+    <rect x="236" y="206" width="40" height="16" rx="4"/>
+    <rect x="223" y="226" width="66" height="16" rx="4"/>
+    <rect x="210" y="246" width="92" height="16" rx="4"/>
+    <rect x="197" y="266" width="118" height="16" rx="4"/>
+  </g>
+</svg>`;
+
+const JOBS = [
+  { name:'icon-192.png',          size:192, inset:0,    label:'192 × 192' },
+  { name:'icon-512.png',          size:512, inset:0,    label:'512 × 512' },
+  { name:'icon-maskable-512.png', size:512, inset:0.12, label:'512 MASKABLE' }
+];
+
+const img = new Image();
+img.onload = () => JOBS.forEach(render);
+img.onerror = () => document.getElementById('shelf').textContent = 'Could not render the artwork.';
+img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(SVG);
+
+function render(job){
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = job.size;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#14100c';
+  g.fillRect(0, 0, job.size, job.size);
+  // maskable icons get padding so launchers can crop to any shape
+  const pad = job.size * job.inset;
+  g.drawImage(img, pad, pad, job.size - pad * 2, job.size - pad * 2);
+
+  const fig = document.createElement('figure');
+  const shown = Math.min(job.size, 160);
+  cv.style.width = cv.style.height = shown + 'px';
+  fig.appendChild(cv);
+
+  const cap = document.createElement('figcaption');
+  cap.textContent = job.label;
+  fig.appendChild(cap);
+
+  const a = document.createElement('a');
+  a.className = 'btn';
+  a.textContent = 'DOWNLOAD';
+  a.download = job.name;
+  a.href = cv.toDataURL('image/png');
+  fig.appendChild(a);
+
+  document.getElementById('shelf').appendChild(fig);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Rithmomachia — The Philosopher's Game</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#14100c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rithmomachia">
+<style>
+:root{
+  --wood-hi:#cfa065; --wood-mid:#b07e42; --wood-lo:#8f6230;
+  --frame-hi:#8f6231; --frame-lo:#5c3a17;
+  --line:rgba(48,25,4,.5);
+  --enemy-tint:rgba(28,12,0,.075);
+  --lt-face:#f0dcac; --lt-face2:#dcbe80; --lt-edge:#a6813c; --lt-ink:#452806;
+  --dk-face:#3a2718; --dk-face2:#1c1207; --dk-edge:#0c0703; --dk-ink:#f5e8c4;
+  --panel-hi:#2c1f14; --panel-lo:#1a1209; --panel-edge:#3d2c1d;
+  --ui-text:#f0e3ca; --ui-dim:#a8967a;
+  --gold:#e2b45c; --alert:#dc6d4c; --good:#8fbf6a;
+
+  --pad:16px;                                  /* frame band, uniform on all sides */
+  /* the cell — and therefore everything else — is sized to fit the viewport.
+     8 cells + frame must fit the width; 16 cells + the panels must fit the height. */
+  --cell:max(26px, min(46px,
+            calc((100vw - 50px) / 8),
+            calc((100vh - 290px) / 16)));
+  --boardw:calc(var(--cell)*8 + 2px);          /* +2px so the 1px border sits outside the grid */
+  --boardh:calc(var(--cell)*16 + 2px);
+  --appw:calc(var(--boardw) + var(--pad)*2);   /* app width is driven by the board */
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+html,body{margin:0;padding:0;overscroll-behavior:none}
+body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
+  color:var(--ui-text);font-family:Georgia,'Iowan Old Style','Times New Roman',serif;
+  display:flex;justify-content:center;min-height:100vh;touch-action:manipulation;
+  padding:calc(12px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right))
+          calc(26px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+.app{width:var(--appw);display:flex;flex-direction:column;gap:7px;position:relative}
+
+.woodgrain,.woodband{position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;mix-blend-mode:multiply}
+.woodgrain{opacity:.20}.woodband{opacity:.15}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.hdr h1{margin:0;font-size:15px;letter-spacing:3.5px;color:var(--gold);font-weight:normal}
+.hdr .sub{font-size:9.5px;letter-spacing:1.6px;color:var(--ui-dim);margin-top:2px}
+.icons{display:flex;gap:7px}
+.icon{width:30px;height:30px;border-radius:8px;position:relative;overflow:hidden;cursor:pointer;
+  background:linear-gradient(150deg,var(--panel-hi),var(--panel-lo));
+  border:1px solid var(--panel-edge);display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--ui-dim)}
+.icon:active{border-color:var(--gold)}
+
+.panel{position:relative;overflow:hidden;border-radius:9px;
+  background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
+  border:1px solid var(--panel-edge)}
+.panel>*{position:relative;z-index:2}
+
+.army{padding:7px 10px;display:flex;flex-direction:column;gap:6px}
+.armyrow{display:flex;align-items:center;gap:9px}
+.army .chip{width:17px;height:17px;border-radius:50%;flex:none}
+.chip.dk{background:radial-gradient(circle at 34% 28%,#4b3522,var(--dk-face) 45%,var(--dk-face2));border:1.5px solid var(--dk-edge)}
+.chip.lt{background:radial-gradient(circle at 34% 28%,#f7e8c2,var(--lt-face) 45%,var(--lt-face2));border:1.5px solid var(--lt-edge)}
+.army .nm{font-size:12px;letter-spacing:.6px}
+.army .meta{font-size:10px;color:var(--ui-dim);margin-left:auto;letter-spacing:.4px;text-align:right}
+.army.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(226,180,92,.25)}
+.tray{display:flex;flex-wrap:wrap;gap:3px;
+  border-top:1px solid rgba(255,225,180,.07);padding-top:6px}
+.tray:empty{display:none}
+
+.frame{position:relative;overflow:hidden;padding:var(--pad);border-radius:9px;
+  background:linear-gradient(150deg,var(--frame-hi),var(--frame-lo));
+  box-shadow:0 12px 30px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,228,186,.3)}
+.board{position:relative;z-index:2;width:var(--boardw);height:var(--boardh);
+  border:1px solid var(--line);
+  background:linear-gradient(178deg,var(--wood-hi),var(--wood-mid) 48%,var(--wood-lo));
+  box-shadow:inset 0 0 22px rgba(46,22,2,.42),0 2px 5px rgba(0,0,0,.45);
+  cursor:pointer;touch-action:manipulation}
+.cells{position:absolute;inset:0;z-index:3;display:grid;
+  grid-template-columns:repeat(8,var(--cell));grid-template-rows:repeat(16,var(--cell))}
+.boardgrain{z-index:4;opacity:.24}.boardband{z-index:4;opacity:.13}
+.sq{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sq.lastcol{border-right:none}
+.sq.lastrow{border-bottom:none}
+.sq.enemy::after{content:'';position:absolute;inset:0;background:var(--enemy-tint)}
+.midline{position:absolute;z-index:5;left:0;right:0;top:calc(var(--cell)*8);height:0;
+  border-top:1px solid rgba(44,20,2,.7);box-shadow:0 2px 0 -1px rgba(255,228,186,.24)}
+.layer{position:absolute;inset:0;pointer-events:none}
+.markers{z-index:6}
+.piecelayer{z-index:7}
+
+/* coordinate ring, drawn inside the uniform frame band */
+.coords{position:absolute;inset:0;z-index:5;pointer-events:none;
+  font-family:Georgia,serif;font-size:8.5px;letter-spacing:.5px;color:rgba(255,236,205,.55)}
+.cxf{position:absolute;width:var(--cell);text-align:center;bottom:3px}
+.cxr{position:absolute;left:0;width:var(--pad);height:var(--cell);
+  line-height:var(--cell);text-align:center}
+
+.pcw{position:absolute;width:var(--cell);height:var(--cell);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .5s cubic-bezier(.34,.02,.24,1);will-change:transform}
+.pcw.dying{transition:transform .5s cubic-bezier(.34,.02,.24,1),opacity .34s ease,filter .34s ease}
+.pcw.gone{opacity:0;filter:blur(1.5px)}
+.pcw.lift .pc{transform:scale(1.13);box-shadow:0 5px 9px rgba(0,0,0,.6)}
+.pcw .pc{transition:transform .2s ease,box-shadow .2s ease}
+
+.pc{position:relative;width:calc(var(--cell) - 7px);height:calc(var(--cell) - 7px);
+  display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--cell)*.325);line-height:1;letter-spacing:-.2px}
+.pc.d3{font-size:calc(var(--cell)*.25)}
+.pc.lt{color:var(--lt-ink);text-shadow:0 1px 0 rgba(255,246,218,.5)}
+.pc.dk{color:var(--dk-ink);text-shadow:0 1px 1px rgba(0,0,0,.9)}
+.pc.c{border-radius:50%}
+.pc.c.lt{background:radial-gradient(circle at 34% 26%,#f9ecc8,var(--lt-face) 46%,var(--lt-face2));
+  border:1.5px solid var(--lt-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.45),inset 0 -1px 2px rgba(120,86,32,.32)}
+.pc.c.dk{background:radial-gradient(circle at 34% 26%,#4e3823,var(--dk-face) 44%,var(--dk-face2));
+  border:1.5px solid var(--dk-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.6)}
+.pc.s{border-radius:3px}
+.pc.s.lt{background:linear-gradient(150deg,#f6e5ba,var(--lt-face2));
+  border:1.5px solid var(--lt-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.45),inset 0 -1px 2px rgba(120,86,32,.28)}
+.pc.s.dk{background:linear-gradient(150deg,#42301e,var(--dk-face2));
+  border:1.5px solid var(--dk-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.55)}
+.pc.t{background:none;border:none;box-shadow:none;align-items:flex-end;padding-bottom:2px;
+  font-size:calc(var(--cell)*.29)}
+.pc.t.d3{font-size:calc(var(--cell)*.225)}
+.pc.t .tri{position:absolute;inset:0;clip-path:polygon(50% 4%,100% 96%,0 96%)}
+.pc.t.lt .tri{background:linear-gradient(160deg,#f6e5ba,var(--lt-face2));filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.45))}
+.pc.t.dk .tri{background:linear-gradient(160deg,#42301e,var(--dk-face2));filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.62))}
+.pc.t span{position:relative;z-index:2}
+.pc.t.lt span{color:var(--lt-ink)}.pc.t.dk span{color:var(--dk-ink)}
+.pc.p{border-radius:3px}
+.pc.p.lt{background:linear-gradient(150deg,#f9ecc8,var(--lt-face2));border:1.5px solid var(--gold);
+  box-shadow:0 0 0 1px rgba(226,180,92,.35),0 2px 3px rgba(0,0,0,.5),inset 0 -1px 2px rgba(120,86,32,.3)}
+.pc.p.dk{background:linear-gradient(150deg,#4a3520,var(--dk-face2));border:1.5px solid var(--gold);
+  box-shadow:0 0 0 1px rgba(226,180,92,.3),0 2px 3px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.55)}
+/* the stepped crown shows one bar per surviving component, so the glyph
+   visibly thins as the stack is picked apart */
+.pc.p{flex-direction:column;justify-content:center;gap:1.5px}
+.pc.p .steps{display:flex;flex-direction:column;align-items:center;gap:.5px;opacity:.85}
+.pc.p .steps i{display:block;height:1.5px;border-radius:1px;background:var(--gold)}
+.pc.p span{margin-top:0}
+
+/* small chips for trays and lesson diagrams */
+.pc.tiny{width:20px;height:20px;font-size:8.5px}
+.pc.tiny.d3{font-size:6.5px}
+.pc.t.tiny{font-size:7.5px;padding-bottom:1px}
+.pc.t.tiny.d3{font-size:6px}
+.pc.p.tiny .steps{display:none}
+.pc.p.tiny span{margin-top:0}
+.pc.mid{width:30px;height:30px;font-size:11px}
+.pc.mid.d3{font-size:8.5px}
+.pc.t.mid{font-size:10px}
+.pc.t.mid.d3{font-size:8px}
+.pc.p.mid .steps{display:none}
+.pc.p.mid span{margin-top:0}
+
+/* All marker styles are scoped to .markers so their short names can never
+   leak into panels, the log, or anywhere else that reuses a word like "cap". */
+.markers .mk{position:absolute;width:var(--cell);height:var(--cell);
+  display:flex;align-items:center;justify-content:center}
+.markers .sel{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--gold);
+  box-shadow:0 0 10px rgba(226,180,92,.55)}
+.markers .dot{width:11px;height:11px;border-radius:50%;background:rgba(255,240,205,.62);
+  box-shadow:0 0 6px rgba(255,232,184,.45),inset 0 1px 1px rgba(0,0,0,.3)}
+.markers .cap{position:absolute;inset:1px;border-radius:50%;border:2px dashed var(--alert);
+  box-shadow:0 0 9px rgba(220,109,76,.5)}
+.markers .from{position:absolute;inset:4px;border-radius:6px;border:1.5px dashed rgba(255,238,200,.5)}
+.markers .to{position:absolute;inset:2px;border-radius:8px;border:1.5px solid rgba(255,238,200,.42)}
+.markers .hint{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
+  box-shadow:0 0 10px rgba(143,191,106,.5)}
+.markers .tri-win{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
+  box-shadow:0 0 14px rgba(143,191,106,.7);animation:tw .9s infinite alternate}
+@keyframes tw{from{box-shadow:0 0 8px rgba(143,191,106,.45)}to{box-shadow:0 0 18px rgba(143,191,106,.9)}}
+.flash{position:absolute;inset:0;border-radius:50%;background:rgba(220,109,76,.55);
+  animation:fl .34s ease-out}
+@keyframes fl{from{opacity:.95;transform:scale(.6)}to{opacity:0;transform:scale(1.5)}}
+
+.status{padding:8px 11px;display:flex;align-items:center;gap:9px;min-height:46px}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;
+  box-shadow:0 0 0 0 rgba(226,180,92,.7);animation:p 1.9s infinite}
+.pulse.think{background:var(--ui-dim)}
+.pulse.done{animation:none;background:var(--good)}
+@keyframes p{0%{box-shadow:0 0 0 0 rgba(226,180,92,.55)}70%{box-shadow:0 0 0 9px rgba(226,180,92,0)}100%{box-shadow:0 0 0 0 rgba(226,180,92,0)}}
+.status .main{font-size:12.5px;letter-spacing:.5px}
+.status .note{font-size:10px;color:var(--ui-dim);margin-top:2px;letter-spacing:.3px;line-height:1.45}
+
+.bar{display:flex;gap:6px}
+.btn{flex:1;position:relative;overflow:hidden;border-radius:9px;cursor:pointer;
+  background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
+  border:1px solid var(--panel-edge);padding:10px 0;text-align:center;
+  font-size:10.5px;letter-spacing:1.1px;color:var(--ui-dim);font-family:inherit}
+.btn:active{border-color:var(--gold);color:var(--gold)}
+.btn.gold{border-color:var(--gold);color:var(--gold)}
+
+.log{max-height:118px;overflow-y:auto;padding:8px 11px;font-size:10px;line-height:1.7;
+  color:var(--ui-dim);letter-spacing:.2px}
+.log div{white-space:pre-wrap}
+.log .you{color:#e8dcc2}
+.log .took{color:var(--alert)}      /* not .cap — that name belongs to the board marker */
+.log .win{color:var(--good)}
+
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(8,6,4,.86);
+  display:none;justify-content:center;align-items:flex-start;padding:20px 14px;overflow-y:auto}
+.overlay.open{display:flex}
+.sheet{width:352px;position:relative;overflow:hidden;border-radius:11px;
+  background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
+  border:1px solid var(--panel-edge)}
+.sheet>*{position:relative;z-index:2}
+.sheet h2{margin:0;padding:13px 14px 10px;font-size:11px;letter-spacing:2.6px;color:var(--gold);
+  font-weight:normal;border-bottom:1px solid rgba(255,225,180,.09);
+  display:flex;justify-content:space-between;align-items:center}
+.sheet h2 b{cursor:pointer;color:var(--ui-dim);font-weight:normal;font-size:14px}
+.row{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-bottom:1px solid rgba(255,225,180,.055);font-size:12px}
+.row .lbl{flex:1}
+.row .desc{font-size:9.5px;color:var(--ui-dim);margin-top:3px;line-height:1.5}
+.grp{font-size:9px;letter-spacing:2px;color:#6d6250;padding:13px 14px 5px}
+.seg{display:flex;gap:4px;padding:0 14px 12px}
+.seg div{flex:1;text-align:center;font-size:9.5px;letter-spacing:.6px;padding:8px 0;cursor:pointer;
+  border-radius:6px;border:1px solid var(--panel-edge);color:var(--ui-dim)}
+.seg div.on{border-color:var(--gold);color:var(--gold);background:rgba(226,180,92,.10)}
+.rules{padding:4px 15px 15px;font-size:11.5px;line-height:1.72;color:#d9cbb0}
+.rules h3{font-size:10.5px;letter-spacing:2px;color:var(--gold);font-weight:normal;margin:16px 0 6px}
+.rules p{margin:6px 0}
+.rules b{color:var(--ui-text);font-weight:normal;border-bottom:1px solid rgba(226,180,92,.35)}
+.rules .ex{color:var(--ui-dim);font-size:10.5px;font-style:italic}
+.rules ul{margin:6px 0;padding-left:17px}
+.rules li{margin:4px 0}
+
+/* capture lesson */
+.lsdiagram{display:flex;align-items:center;justify-content:center;gap:9px;
+  padding:16px 14px 4px;flex-wrap:wrap}
+.lsop{font-size:17px;color:var(--gold)}
+.lsn{font-size:12px;color:var(--ui-dim);text-align:center;line-height:1.3}
+.lseq{text-align:center;font-size:19px;color:var(--gold);letter-spacing:1.5px;padding:10px 14px 2px}
+.lstext{padding:8px 16px 14px;font-size:11.5px;line-height:1.7;color:#d9cbb0}
+.lstext em{color:var(--ui-text);font-style:normal;border-bottom:1px solid rgba(226,180,92,.35)}
+.lswho{padding:0 14px;font-size:10px;letter-spacing:1.4px;color:var(--ui-dim);text-align:center}
+
+/* pyramid inspector */
+.pytot{text-align:center;font-size:23px;color:var(--gold);padding:14px 0 3px;letter-spacing:1px}
+.pytot s{color:var(--ui-dim);font-size:13px;letter-spacing:.5px}
+.pysub{text-align:center;font-size:9.5px;letter-spacing:1.6px;color:var(--ui-dim);padding-bottom:10px}
+.pyrow{display:flex;align-items:center;gap:11px;padding:7px 16px;font-size:11.5px}
+.pyrow.lostrow{opacity:.4}
+.pyrow.lostrow .pyv{text-decoration:line-through}
+.pyname{flex:1}
+.pygrant{font-size:9.5px;color:var(--ui-dim);margin-top:2px}
+.pytaken{font-size:8.5px;letter-spacing:1.2px;color:var(--alert)}
+.pymove{padding:11px 16px;font-size:11.5px;
+  border-top:1px solid rgba(255,225,180,.08);margin-top:7px}
+.pynote{padding:5px 16px 14px;font-size:10.5px;line-height:1.68;color:var(--ui-dim)}
+.pynote em{color:var(--ui-text);font-style:normal}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="fGrain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.72 0.009" numOctaves="5" seed="17"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+  <filter id="fBand" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.13 0.0035" numOctaves="3" seed="5"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+</svg>
+
+<div class="app">
+  <div class="hdr">
+    <div>
+      <h1>RITHMOMACHIA</h1>
+      <div class="sub">THE PHILOSOPHER'S GAME</div>
+    </div>
+    <div class="icons">
+      <div class="icon" id="btnRules"><span>?</span></div>
+      <div class="icon" id="btnMenu"><span>☰</span></div>
+    </div>
+  </div>
+
+  <div class="panel army" id="armyTop">
+    <div class="armyrow">
+      <div class="chip dk" id="chipTop"></div>
+      <div class="nm" id="nmTop">Odds</div>
+      <div class="meta" id="metaTop"></div>
+    </div>
+    <div class="tray" id="trayTop"></div>
+  </div>
+
+  <div class="frame">
+    <svg class="woodgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
+    <svg class="woodband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
+    <div class="coords" id="coordLayer"></div>
+    <div class="board" id="board">
+      <div class="cells" id="cells"></div>
+      <svg class="woodgrain boardgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
+      <svg class="woodband boardband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
+      <div class="midline"></div>
+      <div class="layer markers" id="markers"></div>
+      <div class="layer piecelayer" id="piecelayer"></div>
+    </div>
+  </div>
+
+  <div class="panel army active" id="armyBot">
+    <div class="armyrow">
+      <div class="chip lt" id="chipBot"></div>
+      <div class="nm" id="nmBot">Evens — you</div>
+      <div class="meta" id="metaBot"></div>
+    </div>
+    <div class="tray" id="trayBot"></div>
+  </div>
+
+  <div class="panel status">
+    <div class="pulse" id="pulse"></div>
+    <div>
+      <div class="main" id="stMain">Your move</div>
+      <div class="note" id="stNote">Tap one of your pieces</div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="btn" id="btnHint"><span>HINT</span></div>
+    <div class="btn" id="btnUndo"><span>UNDO</span></div>
+    <div class="btn" id="btnLog"><span>LOG</span></div>
+  </div>
+
+  <div class="panel log" id="logPanel" style="display:none"></div>
+</div>
+
+<!-- ===== CAPTURE LESSON ===== -->
+<div class="overlay" id="ovLesson">
+  <div class="sheet">
+    <h2 id="lsTitle">CAPTURE</h2>
+    <div class="lswho" id="lsWho"></div>
+    <div class="lsdiagram" id="lsDiagram"></div>
+    <div class="lseq" id="lsEq"></div>
+    <div class="lstext" id="lsText"></div>
+    <div style="padding:0 14px 14px;display:flex;gap:6px">
+      <div class="btn" id="lsMute"><span>STOP EXPLAINING THESE</span></div>
+      <div class="btn gold" id="lsOk"><span>GOT IT</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PYRAMID INSPECTOR ===== -->
+<div class="overlay" id="ovPyr">
+  <div class="sheet">
+    <h2><span id="pyTitle">PYRAMID</span> <b data-close="ovPyr">✕</b></h2>
+    <div class="pytot" id="pyTot"></div>
+    <div class="pysub">THE STACK, TOP TO BOTTOM</div>
+    <div id="pyStack"></div>
+    <div class="pymove" id="pyMove"></div>
+    <div class="pynote">A pyramid attacks with its total <em>or</em> any single component. It can be taken whole — by its total, or by siege — or <em>picked apart</em> one component at a time. Each component also grants a move distance, so a shrinking pyramid loses mobility as well as value.</div>
+    <div style="padding:0 14px 14px"><div class="btn gold" data-close="ovPyr"><span>CLOSE</span></div></div>
+  </div>
+</div>
+
+<!-- ===== MENU ===== -->
+<div class="overlay" id="ovMenu">
+  <div class="sheet">
+    <h2>GAME MENU <b data-close="ovMenu">✕</b></h2>
+    <div class="grp">LEARNING</div>
+    <div class="row"><div class="lbl">Explain every capture<div class="desc">A card pops up showing the arithmetic behind it</div></div></div>
+    <div class="seg" data-set="learn"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+    <div class="row"><div class="lbl">Board coordinates</div></div>
+    <div class="seg" data-set="coords"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+    <div class="row"><div class="lbl">Warn me about pieces in danger<div class="desc">Rings your pieces the opponent can currently take</div></div></div>
+    <div class="seg" data-set="danger"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+
+    <div class="grp">NEW GAME</div>
+    <div class="row"><div class="lbl">Play as</div></div>
+    <div class="seg" data-set="side"><div data-v="e" class="on">EVENS</div><div data-v="o">ODDS</div></div>
+    <div class="row"><div class="lbl">Victory condition<div class="desc" id="vcDescTxt"></div></div></div>
+    <div class="seg" data-set="mode"><div data-v="skirmish">SKIRMISH</div><div data-v="standard" class="on">STANDARD</div><div data-v="full">FULL</div></div>
+    <div class="row"><div class="lbl">Opponent</div></div>
+    <div class="seg" data-set="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
+
+    <div class="grp">TABLE</div>
+    <div class="row"><div class="lbl">Move speed</div></div>
+    <div class="seg" data-set="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
+    <div style="padding:12px 14px 15px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+  </div>
+</div>
+
+<!-- ===== RULES ===== -->
+<div class="overlay" id="ovRules">
+  <div class="sheet">
+    <h2>HOW TO PLAY <b data-close="ovRules">✕</b></h2>
+    <div class="rules">
+      <h3>THE IDEA</h3>
+      <p>Two armies of numbered pieces. You don't capture by landing on a piece — you capture by <b>proving an arithmetical relationship</b> to it. You win by getting three pieces into enemy territory whose numbers form a progression.</p>
+      <h3>MOVEMENT</h3>
+      <p>Straight lines only. Never diagonally, never jumping, and the distance is <b>exact</b>.</p>
+      <ul>
+        <li><b>Circle</b> — exactly 1 square</li>
+        <li><b>Triangle</b> — exactly 2 squares</li>
+        <li><b>Square</b> — exactly 3 squares</li>
+        <li><b>Pyramid</b> (gold rim) — 1, 2 or 3; it may move as any shape it still contains</li>
+      </ul>
+      <h3>A TURN</h3>
+      <p>Move one piece. Then <b>every capture your position now makes happens automatically</b>. Your piece never moves onto the captured square — the enemy piece simply leaves the board, for good.</p>
+      <h3>THE FOUR CAPTURES</h3>
+      <p><b>Encounter</b> — you could reach an enemy of the same value.<br><span class="ex">your 25 can reach their 25</span></p>
+      <p><b>Ambush</b> — two of your pieces could reach the same enemy, and their values add or subtract to it.<br><span class="ex">your 6 and 6 both reach their 12</span></p>
+      <p><b>Assault</b> — you and an enemy share a row or column with only empty squares between. Count them (<i>n</i>). Capture if your value × <i>n</i>, or your value ÷ <i>n</i>, equals theirs.<br><span class="ex">your 8, four empty squares from their 32</span></p>
+      <p><b>Siege</b> — an enemy piece has no legal move left and at least one blocker is yours. Board edges count as walls.</p>
+      <h3>THE PYRAMIDS</h3>
+      <p>A pyramid is a <b>stack of separate pieces</b>. The light one is squares 36 and 25, triangles 16 and 9, circles 4 and 1 — total <b>91</b>. The dark one is squares 64 and 49, triangles 36 and 25, circle 16 — total <b>190</b>. It attacks with its total <i>or</i> any single component, and can be taken whole or <b>picked apart</b> one component at a time. Each component grants a move distance, so a pyramid that loses its circles can no longer step one square.</p>
+      <p><b>Tap any pyramid to see inside it</b> — your own needs a second tap, since the first one selects it.</p>
+      <h3>WINNING</h3>
+      <p>Get <b>three pieces into the enemy half</b>, in a straight line, evenly spaced, values rising or falling in a progression:</p>
+      <ul>
+        <li><b>Arithmetic</b> — equal gaps &nbsp;<span class="ex">2, 4, 6</span></li>
+        <li><b>Geometric</b> — equal ratios &nbsp;<span class="ex">2, 4, 8</span></li>
+        <li><b>Harmonic</b> — a : c = (b−a) : (c−b) &nbsp;<span class="ex">9, 15, 45</span></li>
+      </ul>
+      <p>Capturing enough pieces also wins, depending on the setting. And if you ever have <b>no legal move</b>, you lose.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ENGINE ================= -->
+<script id="engine">
+const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+const DIST={c:1,t:2,s:3};
+const SHAPE_NAME={c:'circle',t:'triangle',s:'square',p:'pyramid'};
+
+const ODD_ROWS=[
+ [[361,'s'],[225,'s'],null,null,null,null,[121,'s'],[49,'s']],
+ [[190,'p'],[120,'s'],[64,'t'],[56,'t'],[30,'t'],[36,'t'],[66,'s'],[28,'s']],
+ [[100,'t'],[90,'t'],[81,'c'],[49,'c'],[25,'c'],[9,'c'],[12,'t'],[16,'t']],
+ [null,null,[9,'c'],[7,'c'],[5,'c'],[3,'c'],null,null]
+];
+const EVEN_ROWS=[
+ [null,null,[8,'c'],[6,'c'],[4,'c'],[2,'c'],null,null],
+ [[81,'t'],[72,'t'],[64,'c'],[36,'c'],[16,'c'],[4,'c'],[6,'t'],[9,'t']],
+ [[153,'s'],[91,'p'],[49,'t'],[42,'t'],[20,'t'],[25,'t'],[45,'s'],[15,'s']],
+ [[289,'s'],[169,'s'],null,null,null,null,[81,'s'],[25,'s']]
+];
+const PYR={
+  e:[{v:36,shape:'s'},{v:25,shape:'s'},{v:16,shape:'t'},{v:9,shape:'t'},{v:4,shape:'c'},{v:1,shape:'c'}],
+  o:[{v:64,shape:'s'},{v:49,shape:'s'},{v:36,shape:'t'},{v:25,shape:'t'},{v:16,shape:'c'}]
+};
+const other=s=>s==='e'?'o':'e';
+const inB=(r,c)=>r>=0&&r<16&&c>=0&&c<8;
+/* fixed board notation: file letter A-H, rank 1 at the Even back rank */
+const coord=(r,c)=>String.fromCharCode(65+c)+(16-r);
+
+function mkState(){
+  const pieces=[],grid=new Int16Array(128).fill(-1);
+  let id=0;
+  const put=(r,c,v,shape,side)=>{
+    const p={id:id++,side,shape,v,comps:null,alive:true,r,c};
+    if(shape==='p'){ p.comps=PYR[side].map(x=>({...x})); p.v=p.comps.reduce((a,x)=>a+x.v,0); }
+    pieces.push(p); grid[r*8+c]=p.id;
+  };
+  ODD_ROWS.forEach((row,i)=>row.forEach((e,c)=>{ if(e) put(i,c,e[0],e[1],'o'); }));
+  EVEN_ROWS.forEach((row,i)=>row.forEach((e,c)=>{ if(e) put(12+i,c,e[0],e[1],'e'); }));
+  return {grid,pieces,turn:'o',caps:{e:[],o:[]},quiet:0,ply:0};
+}
+function clone(S){
+  return {grid:S.grid.slice(),
+    pieces:S.pieces.map(p=>p.comps?{...p,comps:p.comps.map(x=>({...x}))}:{...p}),
+    turn:S.turn,caps:{e:S.caps.e.slice(),o:S.caps.o.slice()},quiet:S.quiet,ply:S.ply};
+}
+const at=(S,r,c)=>{const i=S.grid[r*8+c];return i<0?null:S.pieces[i];};
+
+function distances(p){
+  if(p.shape!=='p') return [DIST[p.shape]];
+  const s=new Set(); for(const x of p.comps) s.add(DIST[x.shape]);
+  return [...s].sort((a,b)=>a-b);
+}
+function attackVals(p){
+  if(p.shape!=='p') return [p.v];
+  return [p.v,...p.comps.map(x=>x.v)];
+}
+function legalDests(S,p){
+  const out=[];
+  for(const d of distances(p)) for(const [dr,dc] of DIRS){
+    let ok=true;
+    for(let k=1;k<d;k++){ const rr=p.r+dr*k,cc=p.c+dc*k; if(!inB(rr,cc)||at(S,rr,cc)){ok=false;break;} }
+    if(!ok) continue;
+    const rr=p.r+dr*d,cc=p.c+dc*d;
+    if(!inB(rr,cc)||at(S,rr,cc)) continue;
+    out.push([rr,cc]);
+  }
+  return out;
+}
+function genMoves(S,side){
+  const mv=[];
+  for(const p of S.pieces){
+    if(!p.alive||p.side!==side) continue;
+    for(const [tr,tc] of legalDests(S,p)) mv.push({id:p.id,fr:p.r,fc:p.c,tr,tc});
+  }
+  return mv;
+}
+function reaches(S,p,tr,tc){
+  const ddr=tr-p.r, ddc=tc-p.c;
+  if(ddr!==0&&ddc!==0) return false;
+  const dist=Math.abs(ddr)+Math.abs(ddc);
+  if(dist===0||!distances(p).includes(dist)) return false;
+  const dr=Math.sign(ddr), dc=Math.sign(ddc);
+  for(let k=1;k<dist;k++) if(at(S,p.r+dr*k,p.c+dc*k)) return false;
+  return true;
+}
+function siegeInfo(S,T,bySide){
+  let hasMove=false; const blockers=[];
+  for(const d of distances(T)) for(const [dr,dc] of DIRS){
+    let blocker=null;
+    for(let k=1;k<=d;k++){
+      const rr=T.r+dr*k,cc=T.c+dc*k;
+      if(!inB(rr,cc)){ blocker='edge'; break; }
+      const q=at(S,rr,cc);
+      if(q){ blocker=q; break; }
+    }
+    if(blocker===null) hasMove=true;
+    else if(blocker!=='edge'&&blocker.side===bySide&&!blockers.includes(blocker)) blockers.push(blocker);
+  }
+  return (!hasMove&&blockers.length)?{blockers}:null;
+}
+const info=p=>({v:p.v,shape:p.shape,side:p.side});
+
+function sweep(S,side){
+  const caps=[];
+  for(const T of S.pieces){
+    if(!T.alive||T.side===side) continue;
+    const nameFull=SHAPE_NAME[T.shape]+' '+T.v;
+    const sq=coord(T.r,T.c);
+    const si=siegeInfo(S,T,side);
+    if(si){
+      caps.push({tid:T.id,comp:-1,kind:'siege',text:'by siege',value:T.v,desc:nameFull,sq,
+                 atk:si.blockers.map(info),tgt:info(T)});
+      continue;
+    }
+    const reachers=[];
+    for(const M of S.pieces) if(M.alive&&M.side===side&&reaches(S,M,T.r,T.c)) reachers.push(M);
+    const targets = T.shape==='p'
+      ? [{v:T.v,comp:-1},...T.comps.map((x,i)=>({v:x.v,comp:i}))]
+      : [{v:T.v,comp:-1}];
+    let hit=null;
+    for(const tg of targets){
+      const dname = tg.comp<0 ? nameFull : `the ${tg.v} inside the pyramid`;
+      const base={tid:T.id,comp:tg.comp,value:tg.v,desc:dname,sq,
+                  tgt:{v:tg.v,shape:tg.comp<0?T.shape:T.comps[tg.comp].shape,side:T.side}};
+      for(const M of reachers){ for(const av of attackVals(M)) if(av===tg.v){
+        hit={...base,kind:'encounter',op:'=',text:`by encounter (${av} = ${tg.v})`,
+             atk:[{v:av,shape:M.shape,side:M.side}]}; break; }
+        if(hit) break; }
+      if(hit) break;
+      for(let i=0;i<reachers.length&&!hit;i++) for(let j=i+1;j<reachers.length&&!hit;j++){
+        for(const a of attackVals(reachers[i])){ for(const b of attackVals(reachers[j])){
+          if(a+b===tg.v){ hit={...base,kind:'ambush',op:'+',text:`by ambush (${a} + ${b} = ${tg.v})`,
+            atk:[{v:a,shape:reachers[i].shape,side:side},{v:b,shape:reachers[j].shape,side:side}]}; break; }
+          if(tg.v>0&&Math.abs(a-b)===tg.v){ const hi=Math.max(a,b),lo=Math.min(a,b);
+            hit={...base,kind:'ambush',op:'−',text:`by ambush (${hi} − ${lo} = ${tg.v})`,
+              atk:[{v:hi,shape:(a>=b?reachers[i]:reachers[j]).shape,side:side},
+                   {v:lo,shape:(a>=b?reachers[j]:reachers[i]).shape,side:side}]}; break; }
+        } if(hit) break; }
+      }
+      if(hit) break;
+      for(const [dr,dc] of DIRS){
+        let q=null,n=0;
+        for(let k=1;k<16;k++){
+          const rr=T.r+dr*k,cc=T.c+dc*k;
+          if(!inB(rr,cc)) break;
+          const x=at(S,rr,cc);
+          if(x){ q=x; n=k-1; break; }
+        }
+        if(!q||q.side!==side||n<1) continue;
+        for(const av of attackVals(q)){
+          if(av*n===tg.v){ hit={...base,kind:'assault',op:'×',n,text:`by assault (${av} × ${n} = ${tg.v})`,
+            atk:[{v:av,shape:q.shape,side:q.side}]}; break; }
+          if(av===n*tg.v){ hit={...base,kind:'assault',op:'÷',n,text:`by assault (${av} ÷ ${n} = ${tg.v})`,
+            atk:[{v:av,shape:q.shape,side:q.side}]}; break; }
+        }
+        if(hit) break;
+      }
+      if(hit) break;
+    }
+    if(hit) caps.push(hit);
+  }
+  return caps;
+}
+function kill(S,p){ p.alive=false; S.grid[p.r*8+p.c]=-1; }
+function applyCaps(S,caps,side){
+  for(const c of caps){
+    const T=S.pieces[c.tid];
+    if(!T.alive) continue;
+    let shape=T.shape;
+    if(c.comp<0){ kill(S,T); }
+    else{
+      shape=T.comps[c.comp].shape;
+      T.comps.splice(c.comp,1);
+      if(!T.comps.length) kill(S,T);
+      else T.v=T.comps.reduce((a,x)=>a+x.v,0);
+    }
+    S.caps[side].push({v:c.value,shape});
+  }
+}
+function applyMove(S,mv){
+  const p=S.pieces[mv.id];
+  S.grid[p.r*8+p.c]=-1;
+  p.r=mv.tr; p.c=mv.tc;
+  S.grid[p.r*8+p.c]=p.id;
+  const caps=sweep(S,p.side);
+  applyCaps(S,caps,p.side);
+  S.quiet = caps.length?0:S.quiet+1;
+  S.ply++;
+  S.turn=other(p.side);
+  return caps;
+}
+function progOf(sorted){
+  const [a,b,c]=sorted;
+  if(!(a<b&&b<c)) return null;
+  if(b-a===c-b) return 'arithmetic';
+  if(b*b===a*c) return 'geometric';
+  if(a*(c-b)===c*(b-a)) return 'harmonic';
+  return null;
+}
+function tripleType(v3){
+  const asc=v3[0]<v3[1]&&v3[1]<v3[2], desc=v3[0]>v3[1]&&v3[1]>v3[2];
+  if(!asc&&!desc) return null;
+  return progOf([...v3].sort((x,y)=>x-y));
+}
+const inTerr=(side,r)=>side==='e'? r<8 : r>=8;
+function findTriumph(S,side){
+  const list=S.pieces.filter(p=>p.alive&&p.side===side&&inTerr(side,p.r));
+  if(list.length<3) return null;
+  for(const A of list) for(const B of list){
+    if(A===B) continue;
+    const dr=B.r-A.r, dc=B.c-A.c;
+    if(!(dr===0||dc===0||Math.abs(dr)===Math.abs(dc))) continue;
+    const cr=B.r+dr, cc=B.c+dc;
+    if(!inB(cr,cc)) continue;
+    const C=at(S,cr,cc);
+    if(!C||!C.alive||C.side!==side||!inTerr(side,C.r)) continue;
+    const t=tripleType([A.v,B.v,C.v]);
+    if(!t) continue;
+    const cells=[[A.r,A.c],[B.r,B.c],[C.r,C.c]];
+    let grade='small', vals=[A.v,B.v,C.v];
+    const r2=C.r+dr, c2=C.c+dc;
+    if(inB(r2,c2)){
+      const D=at(S,r2,c2);
+      if(D&&D.alive&&D.side===side&&inTerr(side,D.r)){
+        const four=[A.v,B.v,C.v,D.v], kinds=new Set();
+        for(let i=0;i<4;i++) for(let j=i+1;j<4;j++) for(let k=j+1;k<4;k++){
+          const tt=tripleType([four[i],four[j],four[k]]); if(tt) kinds.add(tt);
+        }
+        if(kinds.size>=3){ grade='grand'; cells.push([D.r,D.c]); vals=four; }
+        else if(kinds.size===2){ grade='great'; cells.push([D.r,D.c]); vals=four; }
+      }
+    }
+    return {type:t,grade,cells,vals};
+  }
+  return null;
+}
+function buildPairSet(vals){
+  const set=new Set(), n=vals.length;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) for(let k=j+1;k<n;k++){
+    const t=[vals[i],vals[j],vals[k]].sort((x,y)=>x-y);
+    if(progOf(t)){ set.add(t[0]+'|'+t[1]); set.add(t[1]+'|'+t[2]); set.add(t[0]+'|'+t[2]); }
+  }
+  return set;
+}
+let PAIRS=null;
+function pairSets(S){
+  if(PAIRS) return PAIRS;
+  const v={e:[],o:[]};
+  for(const p of S.pieces) v[p.side].push(p.v);
+  PAIRS={e:buildPairSet(v.e),o:buildPairSet(v.o)};
+  return PAIRS;
+}
+function pairBonus(S,side){
+  const ps=pairSets(S)[side];
+  const inT=S.pieces.filter(p=>p.alive&&p.side===side&&inTerr(side,p.r));
+  let n=0;
+  for(let i=0;i<inT.length;i++) for(let j=i+1;j<inT.length;j++){
+    const a=Math.min(inT[i].v,inT[j].v), b=Math.max(inT[i].v,inT[j].v);
+    if(ps.has(a+'|'+b)) n++;
+  }
+  return n;
+}
+function capScore(caps){ let s=0; for(const c of caps) s+=45+c.value*0.35; return s; }
+function scoreAfter(S,side,caps){
+  let s=capScore(caps), terr=0, pyr=0;
+  for(const p of S.pieces){
+    if(!p.alive||p.side!==side) continue;
+    if(inTerr(side,p.r)) terr++;
+    if(p.shape==='p') pyr=1;
+  }
+  s+=terr*5 + pairBonus(S,side)*8 + pyr*25;
+  if(findTriumph(S,side)) s+=9000;
+  return s;
+}
+function bestReply(S,side){
+  let best=0;
+  for(const mv of genMoves(S,side)){
+    const S2=clone(S); const caps=applyMove(S2,mv);
+    let v=capScore(caps);
+    if(findTriumph(S2,side)) v+=9000;
+    if(v>best) best=v;
+  }
+  return best;
+}
+function chooseMove(S,side,level){
+  const moves=genMoves(S,side);
+  if(!moves.length) return null;
+  const scored=moves.map(mv=>{
+    const S2=clone(S); const caps=applyMove(S2,mv);
+    return {mv,S2,base:scoreAfter(S2,side,caps)};
+  });
+  scored.sort((a,b)=>b.base-a.base);
+  if(level==='novice'){
+    const pool=scored.slice(0,Math.min(8,scored.length));
+    for(const x of pool) x.base+=Math.random()*40;
+    pool.sort((a,b)=>b.base-a.base);
+    return pool[0].mv;
+  }
+  const width=level==='scholar'?8:14;
+  const top=scored.slice(0,Math.min(width,scored.length));
+  for(const c of top) c.final=c.base-0.85*bestReply(c.S2,other(side))+Math.random()*4;
+  top.sort((a,b)=>b.final-a.final);
+  return top[0].mv;
+}
+function checkWin(S,side,mode){
+  const t=findTriumph(S,side);
+  if(t) return {winner:side,how:'triumph',triumph:t};
+  const n=S.caps[side].length, v=S.caps[side].reduce((a,b)=>a+b.v,0);
+  if(mode==='skirmish'&&(n>=5||v>=150)) return {winner:side,how:'captures'};
+  if(mode==='standard'&&n>=8) return {winner:side,how:'captures'};
+  return null;
+}
+</script>
+
+<!-- ================= UI ================= -->
+<script>
+const PAD=16;
+let CELL=40;
+/* --cell is a min()/max() expression, and getComputedStyle hands those back
+   unresolved — so measure the board itself. clientWidth excludes the border,
+   which makes it exactly 8 cells wide. */
+function readCell(){
+  const w=document.getElementById('board').clientWidth;
+  if(w>0) CELL=w/8;
+}
+readCell();
+let S, human='e', ai='o', mode='standard', level='novice', speed='normal';
+let dangerOn=true, learnOn=true, coordsOn=true;
+let busy=false, over=false, selected=null, hintMv=null, undoStack=[];
+const els=new Map(), learnMuted=new Set();
+
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms*SPD()));
+const SPD=()=>speed==='slow'?1.45:speed==='fast'?0.6:1;
+const dR=r=>human==='e'?r:15-r;
+const dC=c=>human==='e'?c:7-c;
+const sideName=s=>s==='e'?'Evens':'Odds';
+
+(function buildCells(){
+  const cells=$('cells');
+  for(let r=0;r<16;r++) for(let c=0;c<8;c++){
+    const d=document.createElement('div');
+    d.className='sq'+(r===15?' lastrow':'')+(c===7?' lastcol':'')+(r<8?' enemy':'');
+    cells.appendChild(d);
+  }
+})();
+
+function chipNode(v,shape,side,size,steps){
+  const el=document.createElement('div');
+  el.className='pc '+shape+' '+(side==='e'?'lt':'dk')+(size?' '+size:'')+(String(v).length>2?' d3':'');
+  if(shape==='t'){
+    const t=document.createElement('div'); t.className='tri'; el.appendChild(t);
+    const s=document.createElement('span'); s.textContent=v; el.appendChild(s);
+  }else if(shape==='p'){
+    const st=document.createElement('div'); st.className='steps';
+    const n=steps||3;                                  // one bar per surviving component
+    for(let i=0;i<n;i++){
+      const b=document.createElement('i');
+      b.style.width=(4+i*1.7).toFixed(1)+'px';
+      st.appendChild(b);
+    }
+    el.appendChild(st);
+    const s=document.createElement('span'); s.textContent=v; el.appendChild(s);
+  }else el.textContent=v;
+  return el;
+}
+const stepsOf=p=>p.comps?p.comps.length:3;
+function pieceNode(p){
+  const w=document.createElement('div'); w.className='pcw'; w.dataset.id=p.id;
+  w.appendChild(chipNode(p.v,p.shape,p.side,null,stepsOf(p)));
+  return w;
+}
+function paint(w,p){ w.innerHTML=''; w.appendChild(chipNode(p.v,p.shape,p.side,null,stepsOf(p))); }
+
+/* ---------- pyramid contents ---------- */
+const stillIn=(p,v)=>p.comps.some(c=>c.v===v);
+function stackLine(p){
+  return PYR[p.side].map(f=>stillIn(p,f.v)
+    ? `${f.v}` : `<s style="opacity:.45">${f.v}</s>`).join(' · ');
+}
+function selectionNote(){
+  if(selected==null) return 'Tap one of your pieces';
+  const p=S.pieces[selected];
+  if(p.shape!=='p'){
+    const d=DIST[p.shape];
+    return `${SHAPE_NAME[p.shape]} ${p.v} — moves exactly ${d} ${d===1?'square':'squares'}`;
+  }
+  return stackLine(p)+' &nbsp;·&nbsp; tap again to inspect';
+}
+function showPyramid(p){
+  const full=PYR[p.side], total=full.reduce((a,x)=>a+x.v,0);
+  $('pyTitle').textContent=(p.side==='e'?'LIGHT':'DARK')+' PYRAMID';
+  $('pyTot').innerHTML = p.v===total ? String(p.v) : `${p.v} <s>of ${total}</s>`;
+  const box=$('pyStack'); box.innerHTML='';
+  for(const f of [...full].reverse()){           // smallest on top, like a real pyramid
+    const gone=!stillIn(p,f.v);
+    const row=document.createElement('div');
+    row.className='pyrow'+(gone?' lostrow':'');
+    row.appendChild(chipNode(f.v,f.shape,p.side,'tiny'));
+    const nm=document.createElement('div'); nm.className='pyname';
+    nm.innerHTML=`<span class="pyv">${SHAPE_NAME[f.shape]} ${f.v}</span>`+
+      `<div class="pygrant">grants the ${DIST[f.shape]}-square move</div>`;
+    row.appendChild(nm);
+    if(gone){ const t=document.createElement('div'); t.className='pytaken'; t.textContent='TAKEN'; row.appendChild(t); }
+    box.appendChild(row);
+  }
+  const d=distances(p);
+  $('pyMove').innerHTML = d.length
+    ? `Still moves <b style="color:var(--gold)">${d.join(', ')}</b> ${d.length>1?'squares':'square'} — straight lines only.`
+    : 'Nothing left of it.';
+  $('ovPyr').classList.add('open');
+}
+function place(w,p){ w.style.transform=`translate(${dC(p.c)*CELL}px,${dR(p.r)*CELL}px)`; }
+
+function buildCoords(){
+  const f=$('coordLayer'); f.innerHTML='';
+  if(!coordsOn) return;
+  for(let i=0;i<8;i++){
+    const c=human==='e'?i:7-i;
+    const d=document.createElement('div'); d.className='cxf';
+    d.style.left=(PAD+1+i*CELL)+'px';
+    d.textContent=String.fromCharCode(65+c);
+    f.appendChild(d);
+  }
+  for(let i=0;i<16;i++){
+    const r=human==='e'?i:15-i;
+    const d=document.createElement('div'); d.className='cxr';
+    d.style.top=(PAD+1+i*CELL)+'px';
+    d.textContent=16-r;
+    f.appendChild(d);
+  }
+}
+function rebuild(){
+  const layer=$('piecelayer');
+  layer.innerHTML=''; els.clear();
+  for(const p of S.pieces){
+    if(!p.alive) continue;
+    const w=pieceNode(p);
+    w.style.transition='none';
+    place(w,p);
+    layer.appendChild(w); els.set(p.id,w);
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    for(const w of els.values()) w.style.transition='';
+  }));
+  buildCoords(); clearMarks(); updatePanels();
+}
+
+function clearMarks(){ $('markers').innerHTML=''; }
+function mark(r,c,inner){
+  const m=document.createElement('div'); m.className='mk';
+  m.style.transform=`translate(${dC(c)*CELL}px,${dR(r)*CELL}px)`;
+  const i=document.createElement('div'); i.className=inner;
+  m.appendChild(i); $('markers').appendChild(m);
+}
+let lastFrom=null,lastTo=null;
+function showSelection(){
+  clearMarks();
+  if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
+  if(lastTo) mark(lastTo[0],lastTo[1],'to');
+  if(dangerOn&&!over&&S.turn===human) for(const c of sweep(S,ai)){
+    const T=S.pieces[c.tid]; if(T.alive) mark(T.r,T.c,'cap');
+  }
+  if(hintMv){ mark(hintMv.fr,hintMv.fc,'hint'); mark(hintMv.tr,hintMv.tc,'hint'); }
+  if(selected!=null){
+    const p=S.pieces[selected];
+    mark(p.r,p.c,'sel');
+    for(const [r,c] of legalDests(S,p)) mark(r,c,'dot');
+  }
+}
+
+function renderTrays(){
+  for(const [side,el] of [[ai,$('trayTop')],[human,$('trayBot')]]){
+    el.innerHTML='';
+    for(const t of S.caps[side]) el.appendChild(chipNode(t.v,t.shape,other(side),'tiny'));
+  }
+}
+function updatePanels(){
+  const alive=s=>S.pieces.filter(p=>p.alive&&p.side===s);
+  const val=s=>alive(s).reduce((a,p)=>a+p.v,0);
+  $('chipTop').className='chip '+(ai==='e'?'lt':'dk');
+  $('chipBot').className='chip '+(human==='e'?'lt':'dk');
+  $('nmTop').textContent=sideName(ai);
+  $('nmBot').textContent=sideName(human)+' — you';
+  $('metaTop').textContent=`${alive(ai).length} pieces · ${val(ai)} · taken ${S.caps[ai].length}`;
+  $('metaBot').textContent=`${alive(human).length} pieces · ${val(human)} · taken ${S.caps[human].length}`;
+  $('armyTop').classList.toggle('active',S.turn===ai&&!over);
+  $('armyBot').classList.toggle('active',S.turn===human&&!over);
+  renderTrays();
+}
+function setStatus(main,note,cls){
+  $('stMain').textContent=main;
+  $('stNote').innerHTML=note||'';
+  $('pulse').className='pulse'+(cls?' '+cls:'');
+}
+function log(txt,cls){
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=txt;
+  $('logPanel').prepend(d);
+}
+function describe(p,mv,fromR,fromC){
+  const dc=mv.tc-fromC;
+  const n=Math.abs(mv.tr-fromR)+Math.abs(dc);
+  const word = dc===0 ? (dR(mv.tr)<dR(fromR)?'up':'down')
+                      : (dC(mv.tc)<dC(fromC)?'left':'right');
+  return `${SHAPE_NAME[p.shape]} ${p.v} - ${n} ${word} to ${coord(mv.tr,mv.tc)}`;
+}
+
+/* ---------- capture lesson ---------- */
+const LESSON={
+  encounter:{t:'CAPTURE BY ENCOUNTER'},
+  ambush:{t:'CAPTURE BY AMBUSH'},
+  assault:{t:'CAPTURE BY ASSAULT'},
+  siege:{t:'CAPTURE BY SIEGE'}
+};
+function lessonText(c,byHuman){
+  const yours=byHuman?'Your':'Their', theirs=byHuman?'their':'your';
+  const a=c.atk[0]||{v:'?',shape:'c'};
+  switch(c.kind){
+    case 'encounter':
+      return `${yours} <em>${SHAPE_NAME[a.shape]} ${a.v}</em> could legally move onto that square, and both pieces carry the same number. Equal meets equal, so ${theirs} piece leaves the board. Note that the capturing piece does <em>not</em> move — it stays where it stands.`;
+    case 'ambush':{
+      const b=c.atk[1]||{v:'?'};
+      const verb=c.op==='+'?'add up to':'differ by';
+      return `Two pieces are needed for an ambush. ${yours} <em>${a.v}</em> and <em>${b.v}</em> can each reach that one square, and together they ${verb} <em>${c.value}</em> — exactly what stands there. Neither attacker moves.`;
+    }
+    case 'assault':{
+      const dir=c.op==='×'?`${a.v} × ${c.n}`:`${a.v} ÷ ${c.n}`;
+      return `An assault reaches across the board. ${yours} <em>${SHAPE_NAME[a.shape]} ${a.v}</em> shares a row or column with that piece, with <em>${c.n} empty ${c.n===1?'square':'squares'}</em> lying between them. Because ${dir} = ${c.value}, the piece falls. Block the lane and the threat disappears.`;
+    }
+    case 'siege':
+      return `${theirs.charAt(0).toUpperCase()+theirs.slice(1)} <em>${c.desc}</em> had nowhere legal to go — every square it could reach was occupied or off the board, and at least one blocker was ${byHuman?'yours':'theirs'}. A piece with no move is captured where it stands. No arithmetic required.`;
+  }
+  return '';
+}
+function showLesson(c,byHuman){
+  return new Promise(resolve=>{
+    $('lsTitle').textContent=LESSON[c.kind].t;
+    $('lsWho').textContent=byHuman?'YOU CAPTURED':'THE OPPONENT CAPTURED';
+    const dg=$('lsDiagram'); dg.innerHTML='';
+    const op=t=>{const d=document.createElement('div');d.className='lsop';d.textContent=t;return d;};
+    if(c.kind==='siege'){
+      dg.appendChild(chipNode(c.tgt.v,c.tgt.shape,c.tgt.side,'mid'));
+      const n=document.createElement('div'); n.className='lsn'; n.textContent='no legal move'; dg.appendChild(n);
+    }else{
+      dg.appendChild(chipNode(c.atk[0].v,c.atk[0].shape,c.atk[0].side,'mid'));
+      if(c.kind==='ambush'){
+        dg.appendChild(op(c.op));
+        dg.appendChild(chipNode(c.atk[1].v,c.atk[1].shape,c.atk[1].side,'mid'));
+      }else if(c.kind==='assault'){
+        dg.appendChild(op(c.op));
+        const n=document.createElement('div'); n.className='lsn';
+        n.innerHTML=`<b style="font-size:15px;color:var(--ui-text)">${c.n}</b><br>empty`;
+        dg.appendChild(n);
+      }
+      dg.appendChild(op('='));
+      dg.appendChild(chipNode(c.tgt.v,c.tgt.shape,c.tgt.side,'mid'));
+    }
+    $('lsEq').textContent=c.text.replace(/^by \w+ \(|\)$/g,'');
+    $('lsText').innerHTML=lessonText(c,byHuman)+
+      `<div style="margin-top:9px;color:var(--ui-dim);font-size:10.5px">Captured at ${c.sq}.</div>`;
+    $('ovLesson').classList.add('open');
+    const done=mute=>{
+      if(mute) learnMuted.add(c.kind);
+      $('ovLesson').classList.remove('open');
+      resolve();
+    };
+    $('lsOk').onclick=()=>done(false);
+    $('lsMute').onclick=()=>done(true);
+  });
+}
+
+/* ---------- turn loop ---------- */
+async function startTurn(){
+  if(over) return;
+  hintMv=null;
+  const side=S.turn;
+  if(S.quiet>=100){ endGame({draw:true}); return; }
+  if(genMoves(S,side).length===0){ endGame({winner:other(side),how:'blocked'}); return; }
+  updatePanels();
+  if(side===human){
+    busy=false; selected=null;
+    setStatus('Your move','Tap one of your pieces');
+    showSelection();
+  }else{
+    busy=true; selected=null;
+    setStatus(sideName(ai)+' is considering…','','think');
+    showSelection();
+    await sleep(700);
+    const mv=chooseMove(S,ai,level);
+    if(!mv){ endGame({winner:human,how:'blocked'}); return; }
+    await performMove(mv);
+  }
+}
+async function performMove(mv){
+  busy=true; selected=null; hintMv=null; clearMarks();
+  const p=S.pieces[mv.id];
+  const side=p.side, fromR=p.r, fromC=p.c, byHuman=(side===human);
+  const desc=describe(p,mv,fromR,fromC);
+  const caps=applyMove(S,mv);
+
+  lastFrom=[fromR,fromC]; lastTo=[mv.tr,mv.tc];
+  const w=els.get(p.id);
+  w.classList.add('lift');
+  await sleep(110);
+  place(w,p);
+  setStatus(byHuman?'You moved':sideName(side)+' moved',desc,'done');
+  log((byHuman?'You: ':sideName(side)+': ')+desc, byHuman?'you':'');
+  await sleep(520);
+  w.classList.remove('lift');
+  showSelection();
+
+  for(const c of caps){
+    const T=S.pieces[c.tid], tw=els.get(c.tid);
+    if(tw){ const f=document.createElement('div'); f.className='flash';
+      tw.appendChild(f); setTimeout(()=>f.remove(),400); }
+    const who=byHuman?'You captured':sideName(side)+' captured';
+    log(`   ↳ ${who} ${c.desc} at ${c.sq} ${c.text}`,'took');
+    setStatus(who+' '+c.desc, c.text, 'done');
+    await sleep(300);
+    if(c.comp<0){
+      if(tw){ tw.classList.add('dying');
+        requestAnimationFrame(()=>tw.classList.add('gone'));
+        setTimeout(()=>tw.remove(),480);
+        els.delete(c.tid); }
+    }else if(tw&&T.alive) paint(tw,T);
+    updatePanels();
+    await sleep(260);
+    if(learnOn&&!learnMuted.has(c.kind)) await showLesson(c,byHuman);
+  }
+  updatePanels(); showSelection();
+
+  const res=checkWin(S,side,mode);
+  if(res){ endGame(res); return; }
+  await sleep(430);
+  startTurn();
+}
+function endGame(res){
+  over=true; busy=true; clearMarks();
+  if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
+  if(res.draw){
+    setStatus('Drawn','A hundred moves with nothing taken.','done');
+    log('— Drawn by inactivity —','win'); updatePanels(); return;
+  }
+  const youWon=res.winner===human;
+  if(res.how==='triumph'){
+    for(const [r,c] of res.triumph.cells) mark(r,c,'tri-win');
+    const t=res.triumph;
+    setStatus(youWon?'You win — triumph!':sideName(res.winner)+' triumphs',
+      `${t.grade} triumph · ${t.type} progression · ${t.vals.join(' · ')}`,'done');
+    log(`— ${youWon?'You':sideName(res.winner)} won by ${t.grade} triumph (${t.type}: ${t.vals.join(', ')}) —`,'win');
+  }else if(res.how==='captures'){
+    setStatus(youWon?'You win':sideName(res.winner)+' wins','Enough pieces taken.','done');
+    log(`— ${youWon?'You':sideName(res.winner)} won on captures —`,'win');
+  }else{
+    setStatus(youWon?'You win':sideName(res.winner)+' wins',
+      sideName(other(res.winner))+' has no legal move.','done');
+    log(`— ${sideName(other(res.winner))} was blocked —`,'win');
+  }
+  updatePanels();
+}
+
+/* ---------- input ---------- */
+$('board').addEventListener('click',e=>{
+  const rect=$('board').getBoundingClientRect();
+  const x=e.clientX-rect.left-1, y=e.clientY-rect.top-1;
+  const dc=Math.floor(x/CELL), dr=Math.floor(y/CELL);
+  if(dc<0||dc>7||dr<0||dr>15) return;
+  const r=human==='e'?dr:15-dr, c=human==='e'?dc:7-dc;
+  const q=at(S,r,c);
+
+  // a pyramid can be inspected any time: tap the enemy's, or tap yours twice
+  if(q&&q.shape==='p'&&(q.side!==human||selected===q.id)){ showPyramid(q); return; }
+  if(busy||over) return;
+
+  if(selected!=null){
+    const p=S.pieces[selected];
+    if(legalDests(S,p).some(d=>d[0]===r&&d[1]===c)){
+      performMove({id:p.id,fr:p.r,fc:p.c,tr:r,tc:c}); return;
+    }
+  }
+  if(q&&q.side===human){ selected=(selected===q.id)?null:q.id; hintMv=null; }
+  else selected=null;
+  showSelection();
+  setStatus('Your move',selectionNote());
+});
+
+/* ---------- hint, with a reason ---------- */
+function hintReason(mv){
+  const before=sweep(S,ai);
+  const S2=clone(S); const caps=applyMove(S2,mv);
+  if(caps.length){
+    const c=caps[0];
+    return `Takes their ${c.desc} ${c.text}.`;
+  }
+  const t=findTriumph(S2,human);
+  if(t) return `Completes a ${t.type} triumph: ${t.vals.join(', ')}.`;
+  const wasHit=before.some(c=>c.tid===mv.id);
+  const after=sweep(S2,ai);
+  const stillHit=after.some(c=>c.tid===mv.id);
+  const p=S.pieces[mv.id];
+  if(wasHit&&!stillHit) return `Rescues your ${SHAPE_NAME[p.shape]} ${p.v} from capture.`;
+  if(after.length<before.length) return 'Breaks up a threat hanging over your position.';
+  if(inTerr(human,mv.tr)&&!inTerr(human,mv.fr)) return 'Crosses into enemy ground, where triumphs must be built.';
+  if(pairBonus(S2,human)>pairBonus(S,human)) return 'Lines up two values that could grow into a progression.';
+  return 'Safe development — keeps your options open.';
+}
+$('btnHint').onclick=()=>{
+  if(busy||over||S.turn!==human) return;
+  setStatus('Thinking…','','think');
+  setTimeout(()=>{
+    hintMv=chooseMove(S,human,'scholar'); selected=null;
+    if(hintMv){
+      const p=S.pieces[hintMv.id];
+      setStatus(`Try ${SHAPE_NAME[p.shape]} ${p.v} → ${coord(hintMv.tr,hintMv.tc)}`,hintReason(hintMv));
+    }
+    showSelection();
+  },30);
+};
+$('btnUndo').onclick=()=>{
+  if(busy&&!over) return;
+  if(!undoStack.length) return;
+  S=undoStack.pop(); over=false; busy=false; selected=null; hintMv=null;
+  lastFrom=null; lastTo=null;
+  rebuild(); log('— undo —');
+  startTurn();
+};
+$('btnLog').onclick=()=>{
+  const l=$('logPanel'); l.style.display = l.style.display==='none' ? 'block' : 'none';
+};
+$('btnRules').onclick=()=>$('ovRules').classList.add('open');
+$('btnMenu').onclick=()=>$('ovMenu').classList.add('open');
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
+  if(e.target===o&&o.id!=='ovLesson') o.classList.remove('open');
+}));
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.querySelectorAll('div').forEach(d=>d.onclick=()=>{
+    seg.querySelectorAll('div').forEach(x=>x.classList.remove('on'));
+    d.classList.add('on');
+    const k=seg.dataset.set, v=d.dataset.v;
+    if(k==='side'){ human=v; ai=other(v); }
+    if(k==='mode') mode=v;
+    if(k==='level') level=v;
+    if(k==='speed') speed=v;
+    if(k==='danger'){ dangerOn=(v==='on'); showSelection(); }
+    if(k==='learn'){ learnOn=(v==='on'); if(learnOn) learnMuted.clear(); }
+    if(k==='coords'){ coordsOn=(v==='on'); buildCoords(); }
+    vcDesc();
+  });
+});
+function vcDesc(){
+  $('vcDescTxt').textContent = mode==='skirmish'
+    ? 'Skirmish — 5 captures, 150 points, or a triumph'
+    : mode==='standard' ? 'Standard — 8 captures, or a triumph'
+    : 'Full — triumph only, as the philosophers played it';
+}
+$('btnNew').onclick=()=>{ $('ovMenu').classList.remove('open'); newGame(); };
+
+/* ================= SELF-TEST (open with ?test) ================= */
+function runSelfTest(){
+  const results=[]; let pass=0,fail=0;
+  const ok=(name,cond,extra)=>{ cond?pass++:fail++; results.push({name,cond:!!cond,extra:extra||''}); };
+  function tState(list){
+    const pieces=[],grid=new Int16Array(128).fill(-1);
+    list.forEach((x,i)=>{
+      const p={id:i,side:x.side,shape:x.shape,v:x.v,comps:null,alive:true,r:x.r,c:x.c};
+      if(x.shape==='p'){ p.comps=PYR[x.side].map(y=>({...y})); p.v=p.comps.reduce((a,y)=>a+y.v,0); }
+      pieces.push(p); grid[x.r*8+x.c]=i;
+    });
+    return {grid,pieces,turn:'e',caps:{e:[],o:[]},quiet:0,ply:0};
+  }
+  const P=(side,shape,v,r,c)=>({side,shape,v,r,c});
+  const kinds=(St,side)=>sweep(St,side).map(x=>x.kind);
+  const took=(St,side,v)=>sweep(St,side).some(x=>x.value===v);
+
+  { const St=mkState();
+    const al=s=>St.pieces.filter(p=>p.alive&&p.side===s);
+    const sum=s=>al(s).reduce((a,p)=>a+p.v,0);
+    ok('24 pieces per side', al('e').length===24&&al('o').length===24);
+    ok('Even army totals 1312', sum('e')===1312, String(sum('e')));
+    ok('Odd army totals 1752', sum('o')===1752, String(sum('o')));
+    const pe=St.pieces.find(p=>p.shape==='p'&&p.side==='e');
+    const po=St.pieces.find(p=>p.shape==='p'&&p.side==='o');
+    ok('Light pyramid = 91', pe.v===91); ok('Dark pyramid = 190', po.v===190);
+    ok('Odds move first', St.turn==='o');
+    let mirror=true;
+    for(let r=0;r<4;r++) for(let c=0;c<8;c++){
+      const a=at(St,r,c), b=at(St,15-r,c);
+      if(!!a!==!!b || (a&&b&&a.shape!==b.shape)) mirror=false;
+    }
+    ok('Armies are mirror images', mirror);
+  }
+  ok('Coordinate A1 is the Even corner', coord(15,0)==='A1', coord(15,0));
+  ok('Coordinate H16 is the Odd corner', coord(0,7)==='H16', coord(0,7));
+  ok('Jaron’s example: triangle 72 lands on B5', coord(11,1)==='B5', coord(11,1));
+
+  { const St=tState([P('e','c',4,8,4),P('e','t',20,10,4),P('e','s',45,12,4)]);
+    const d=i=>legalDests(St,St.pieces[i]).map(x=>x.join(','));
+    ok('Circle moves exactly 1, 4 ways', d(0).length===4&&d(0).includes('7,4'));
+    ok('Triangle moves exactly 2', d(1).every(s=>{const[r,c]=s.split(',').map(Number);
+      return Math.abs(r-10)+Math.abs(c-4)===2;}));
+    ok('Square moves exactly 3', d(2).every(s=>{const[r,c]=s.split(',').map(Number);
+      return Math.abs(r-12)+Math.abs(c-4)===3;}));
+    ok('No diagonal moves', !d(0).includes('7,3'));
+  }
+  ok('Square cannot jump a blocker',
+    !legalDests(tState([P('e','s',45,8,0),P('o','c',3,9,0)]),
+      tState([P('e','s',45,8,0),P('o','c',3,9,0)]).pieces[0]).some(x=>x[0]===11));
+  ok('Cannot move off the board',
+    legalDests(tState([P('e','s',45,0,0)]),tState([P('e','s',45,0,0)]).pieces[0]).length===2);
+
+  ok('Encounter: 25 takes 25', took(tState([P('e','t',25,5,3),P('o','s',25,5,5)]),'e',25));
+  ok('Encounter needs a clear path',
+     !took(tState([P('e','t',25,5,3),P('o','s',25,5,5),P('o','c',9,5,4)]),'e',25));
+  ok('Ambush: 6 + 6 takes 12',
+     took(tState([P('e','c',6,5,2),P('e','t',6,3,3),P('o','c',12,5,3)]),'e',12));
+  ok('Ambush: 30 − 28 takes 2',
+     took(tState([P('e','t',30,3,3),P('e','s',28,8,3),P('o','c',2,5,3)]),'e',2));
+  ok('Ambush needs two attackers',
+     !took(tState([P('e','c',6,5,2),P('o','c',12,5,3)]),'e',12));
+  ok('Assault: 8 × 4 takes 32', took(tState([P('e','c',8,5,0),P('o','s',32,5,5)]),'e',32));
+  ok('Assault: 120 ÷ 3 takes 40', took(tState([P('e','s',120,5,0),P('o','s',40,5,4)]),'e',40));
+  ok('Assault needs an empty lane',
+     !took(tState([P('e','c',8,5,0),P('o','s',32,5,5),P('o','c',3,5,2)]),'e',32));
+  ok('Assault does not fire when adjacent',
+     !took(tState([P('e','c',8,5,0),P('o','s',16,5,1)]),'e',16));
+  ok('Siege in a corner',
+     kinds(tState([P('o','c',3,0,0),P('e','c',2,1,0),P('e','c',4,0,1)]),'e').includes('siege'));
+  ok('Not sieged while a move remains',
+     !kinds(tState([P('o','c',3,0,0),P('e','c',2,1,0)]),'e').includes('siege'));
+
+  { const St=tState([P('e','t',16,5,3),P('o','p',0,5,5)]);
+    const pyr=St.pieces[1];
+    ok('Dark pyramid assembles to 190', pyr.v===190);
+    ok('Full pyramid moves 1, 2 and 3', distances(pyr).join(',')==='1,2,3');
+    const caps=sweep(St,'e');
+    ok('Pyramid loses a component, not itself', caps.length===1&&caps[0].comp>=0&&caps[0].value===16);
+    applyCaps(St,caps,'e');
+    ok('Pyramid total drops to 174', pyr.v===174&&pyr.alive, String(pyr.v));
+    ok('Pyramid loses the 1-step move with its circle', !distances(pyr).includes(1));
+    ok('Captured component is recorded as a circle',
+       St.caps.e.length===1&&St.caps.e[0].shape==='c'&&St.caps.e[0].v===16);
+    ok('Pyramid attacks with a component value',
+       took(tState([P('e','p',0,5,3),P('o','c',36,5,5)]),'e',36));
+    // inspector data: the lost component must still be listed, marked gone
+    ok('Inspector still lists the taken component',
+       PYR.o.length===5 && !stillIn(pyr,16) && stillIn(pyr,64));
+    ok('Board glyph loses a step per component', stepsOf(pyr)===4, String(stepsOf(pyr)));
+    ok('Component values are unique, so the diff is unambiguous',
+       new Set(PYR.e.map(x=>x.v)).size===6 && new Set(PYR.o.map(x=>x.v)).size===5);
+  }
+  { // lesson metadata must be complete for every capture kind
+    const cases=[
+      tState([P('e','t',25,5,3),P('o','s',25,5,5)]),
+      tState([P('e','c',6,5,2),P('e','t',6,3,3),P('o','c',12,5,3)]),
+      tState([P('e','c',8,5,0),P('o','s',32,5,5)]),
+      tState([P('o','c',3,0,0),P('e','c',2,1,0),P('e','c',4,0,1)])
+    ];
+    let good=true, seen=[];
+    for(const St of cases) for(const c of sweep(St,'e')){
+      seen.push(c.kind);
+      if(!c.atk||!c.atk.length||!c.tgt||!c.sq||!c.text) good=false;
+      if(c.kind==='ambush'&&c.atk.length!==2) good=false;
+      if(c.kind==='assault'&&!(c.n>=1)) good=false;
+    }
+    ok('Every capture carries data for its lesson card', good, seen.join(', '));
+  }
+
+  const tri=(vals,cells,side)=>findTriumph(
+    tState(vals.map((v,i)=>P(side||'e','c',v,cells[i][0],cells[i][1]))), side||'e');
+  ok('Arithmetic triumph 2·4·6',(tri([2,4,6],[[2,0],[2,2],[2,4]])||{}).type==='arithmetic');
+  ok('Geometric triumph 2·4·8',(tri([2,4,8],[[2,0],[2,2],[2,4]])||{}).type==='geometric');
+  ok('Harmonic triumph 9·15·45',(tri([9,15,45],[[2,0],[2,2],[2,4]])||{}).type==='harmonic');
+  ok('Diagonal line counts',!!tri([2,4,6],[[1,1],[2,2],[3,3]]));
+  ok('Unequal spacing rejected',!tri([2,4,6],[[2,0],[2,2],[2,5]]));
+  ok('Out-of-line rejected',!tri([2,4,6],[[2,0],[3,2],[2,4]]));
+  ok('Scrambled order rejected',!tri([4,2,6],[[2,0],[2,2],[2,4]]));
+  ok('Own half does not count',!tri([2,4,6],[[10,0],[10,2],[10,4]]));
+  ok('Odds triumph in rows 8-15',!!tri([3,5,7],[[10,0],[10,2],[10,4]],'o'));
+
+  { let crashes=0,bad=0,plies=0,games=0,wins={triumph:0,captures:0,blocked:0,draw:0};
+    for(let g=0;g<120;g++){
+      try{
+        const St=mkState(); let n=0;
+        while(n<500){
+          if(St.quiet>=100){ wins.draw++; break; }
+          const mv=genMoves(St,St.turn);
+          if(!mv.length){ wins.blocked++; break; }
+          const side=St.turn;
+          applyMove(St,mv[(Math.random()*mv.length)|0]); n++;
+          for(const p of St.pieces){
+            if(p.alive&&St.grid[p.r*8+p.c]!==p.id) bad++;
+            if(!p.alive&&St.grid[p.r*8+p.c]===p.id) bad++;
+          }
+          for(let i=0;i<128;i++){ const id=St.grid[i];
+            if(id>=0){ const p=St.pieces[id]; if(!p.alive||p.r*8+p.c!==i) bad++; } }
+          const w=checkWin(St,side,'standard');
+          if(w){ wins[w.how]++; break; }
+        }
+        plies+=n; games++;
+      }catch(err){ crashes++; console.error(err); }
+    }
+    ok('120 random games without crashing',crashes===0,crashes+' crashes');
+    ok('Board state stays consistent',bad===0,bad+' inconsistencies');
+    ok('Games reach a conclusion',(wins.triumph+wins.captures+wins.blocked+wins.draw)>=100,
+       JSON.stringify(wins));
+    results.push({info:`avg game length ${(plies/games).toFixed(0)} plies · endings ${JSON.stringify(wins)}`});
+  }
+  { const St=mkState(); let legalAll=true;
+    for(const lv of ['novice','scholar','philosopher']){
+      const mv=chooseMove(St,'o',lv);
+      if(!genMoves(St,'o').some(m=>m.id===mv.id&&m.tr===mv.tr&&m.tc===mv.tc)) legalAll=false;
+    }
+    ok('AI returns legal moves at every level',legalAll);
+    const t0=performance.now(); chooseMove(St,'o','philosopher');
+    ok('Hardest AI thinks in under 2.5s',(performance.now()-t0)<2500,
+       (performance.now()-t0).toFixed(0)+'ms');
+    const S2=tState([P('o','c',9,5,4),P('e','t',9,5,6),P('e','c',2,12,0),P('o','c',3,15,7)]);
+    S2.turn='e';
+    const S3=clone(S2); applyMove(S3,chooseMove(S3,'e','scholar'));
+    ok('AI does not throw away a capture',S2.pieces[0].alive&&!S3.pieces[0].alive);
+  }
+
+  document.querySelector('.app').innerHTML=
+    `<div class="hdr"><div><h1>SELF-TEST</h1>
+     <div class="sub">${pass} PASSED · ${fail} FAILED</div></div></div>`+
+    `<div class="panel" style="padding:10px 12px;font-size:11px;line-height:1.85">`+
+    results.map(r=>r.info
+      ? `<div style="color:var(--ui-dim);padding-top:6px">${r.info}</div>`
+      : `<div style="color:${r.cond?'var(--good)':'var(--alert)'}">${r.cond?'✔':'✘'} ${r.name}`+
+        (r.extra?` <span style="color:var(--ui-dim)">— ${r.extra}</span>`:'')+`</div>`).join('')+
+    `</div><div class="bar"><a class="btn gold" href="?" style="text-decoration:none;display:block">`+
+    `<span>BACK TO THE GAME</span></a></div>`;
+}
+
+/* ---------- new game ---------- */
+function newGame(){
+  S=mkState(); over=false; busy=false; selected=null; hintMv=null;
+  undoStack=[]; lastFrom=null; lastTo=null;
+  learnMuted.clear();
+  $('logPanel').innerHTML='';
+  rebuild();
+  log(`— New game · you are ${sideName(human)} · ${mode} · ${level} —`);
+  startTurn();
+}
+const _perform=performMove;
+performMove=async function(mv){
+  if(S.turn===human){ undoStack.push(clone(S)); if(undoStack.length>40) undoStack.shift(); }
+  return _perform(mv);
+};
+/* ---------- keep the board in step with the viewport ---------- */
+let rzTimer=null;
+function relayout(){
+  const old=CELL; readCell();
+  if(Math.abs(old-CELL)<0.5||!S) return;
+  for(const [id,w] of els){ w.style.transition='none'; place(w,S.pieces[id]); }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    for(const w of els.values()) w.style.transition='';
+  }));
+  buildCoords(); showSelection();
+}
+window.addEventListener('resize',()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(relayout,120); });
+window.addEventListener('orientationchange',()=>setTimeout(relayout,320));
+
+/* ---------- offline support (ignored when opened from a file) ---------- */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+vcDesc();
+if(location.search.includes('test')) runSelfTest(); else newGame();
+</script>
+</body>
+</html>
