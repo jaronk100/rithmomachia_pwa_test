@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Rithmomachia">
 <style>
 :root{
-  --wood-hi:#cfa065; --wood-mid:#b07e42; --wood-lo:#8f6230;
-  --frame-hi:#8f6231; --frame-lo:#5c3a17;
+  --wood-hi:#f8c07c; --wood-mid:#e1a55b; --wood-lo:#ba8140;
+  --frame-hi:#8f6231; --frame-lo:#4d3014;
   --line:rgba(48,25,4,.5);
   --enemy-tint:rgba(28,12,0,.075);
   --lt-face:#f0dcac; --lt-face2:#dcbe80; --lt-edge:#a6813c; --lt-ink:#452806;
@@ -23,15 +23,14 @@
   --ui-text:#f0e3ca; --ui-dim:#a8967a;
   --gold:#e2b45c; --alert:#dc6d4c; --good:#8fbf6a;
 
-  --pad:16px;                                  /* frame band, uniform on all sides */
-  /* the cell — and therefore everything else — is sized to fit the viewport.
-     8 cells + frame must fit the width; 16 cells + the panels must fit the height. */
-  --cell:max(26px, min(46px,
+  --pad:16px;
+  /* chrome above/below the board now costs ~240px, so the board gets the rest */
+  --cell:max(26px, min(52px,
             calc((100vw - 50px) / 8),
-            calc((100vh - 290px) / 16)));
-  --boardw:calc(var(--cell)*8 + 2px);          /* +2px so the 1px border sits outside the grid */
+            calc((100vh - 240px) / 16)));
+  --boardw:calc(var(--cell)*8 + 2px);
   --boardh:calc(var(--cell)*16 + 2px);
-  --appw:calc(var(--boardw) + var(--pad)*2);   /* app width is driven by the board */
+  --appw:calc(var(--boardw) + var(--pad)*2);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
   -webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
@@ -39,52 +38,67 @@ html,body{margin:0;padding:0;overscroll-behavior:none}
 body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   color:var(--ui-text);font-family:Georgia,'Iowan Old Style','Times New Roman',serif;
   display:flex;justify-content:center;min-height:100vh;touch-action:manipulation;
-  padding:calc(12px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right))
-          calc(26px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+  padding:calc(10px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right))
+          calc(16px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
 .app{width:var(--appw);display:flex;flex-direction:column;gap:7px;position:relative}
 
+/* The grain sits inside an isolated group together with the wood gradient, so
+   its multiply blend can only ever darken the wood — never the pieces, markers
+   or coordinates painted above it. */
+.woodsurface{position:absolute;inset:0;z-index:0;isolation:isolate;
+  pointer-events:none;overflow:hidden}
+.framewood{background:linear-gradient(150deg,var(--frame-hi),var(--frame-lo));border-radius:9px}
+.boardwood{background:linear-gradient(178deg,var(--wood-hi),var(--wood-mid) 48%,var(--wood-lo));
+  box-shadow:inset 0 0 22px rgba(46,22,2,.42)}
 .woodgrain,.woodband{position:absolute;inset:0;width:100%;height:100%;
   pointer-events:none;mix-blend-mode:multiply}
-.woodgrain{opacity:.20}.woodband{opacity:.15}
+.woodgrain{opacity:.41}
+.woodband{opacity:.29}
 
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
-.hdr h1{margin:0;font-size:15px;letter-spacing:3.5px;color:var(--gold);font-weight:normal}
-.hdr .sub{font-size:9.5px;letter-spacing:1.6px;color:var(--ui-dim);margin-top:2px}
-.icons{display:flex;gap:7px}
-.icon{width:30px;height:30px;border-radius:8px;position:relative;overflow:hidden;cursor:pointer;
+/* ---------- header: title + every action ---------- */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px}
+.hdr h1{margin:0;font-size:13.5px;letter-spacing:3px;color:var(--gold);font-weight:normal;
+  white-space:nowrap}
+.icons{display:flex;gap:5px}
+.icon{width:32px;height:32px;border-radius:8px;position:relative;overflow:hidden;cursor:pointer;
   background:linear-gradient(150deg,var(--panel-hi),var(--panel-lo));
   border:1px solid var(--panel-edge);display:flex;align-items:center;justify-content:center;
-  font-size:13px;color:var(--ui-dim)}
-.icon:active{border-color:var(--gold)}
+  font-size:13px;color:var(--ui-dim);flex:none}
+.icon:active{border-color:var(--gold);color:var(--gold)}
+.icon svg{width:17px;height:17px}
+.icon.off{opacity:.33}
+.icon.lit{border-color:var(--good);color:var(--good)}
 
 .panel{position:relative;overflow:hidden;border-radius:9px;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
   border:1px solid var(--panel-edge)}
 .panel>*{position:relative;z-index:2}
 
-.army{padding:7px 10px;display:flex;flex-direction:column;gap:6px}
-.armyrow{display:flex;align-items:center;gap:9px}
-.army .chip{width:17px;height:17px;border-radius:50%;flex:none}
-.chip.dk{background:radial-gradient(circle at 34% 28%,#4b3522,var(--dk-face) 45%,var(--dk-face2));border:1.5px solid var(--dk-edge)}
-.chip.lt{background:radial-gradient(circle at 34% 28%,#f7e8c2,var(--lt-face) 45%,var(--lt-face2));border:1.5px solid var(--lt-edge)}
-.army .nm{font-size:12px;letter-spacing:.6px}
-.army .meta{font-size:10px;color:var(--ui-dim);margin-left:auto;letter-spacing:.4px;text-align:right}
-.army.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(226,180,92,.25)}
-.tray{display:flex;flex-wrap:wrap;gap:3px;
-  border-top:1px solid rgba(255,225,180,.07);padding-top:6px}
-.tray:empty{display:none}
+/* ---------- turn bars: one row, name + progress + captured shelf ---------- */
+.army{display:flex;align-items:center;gap:9px;padding:5px 9px;min-height:32px}
+.army .nm{font-size:12px;letter-spacing:.5px;white-space:nowrap;flex:none}
+.army .nm i{font-style:normal;color:var(--ui-dim);font-size:10.5px}
+.army.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(226,180,92,.3)}
+.army.active .nm{color:#fff3da}
+.traywrap{position:relative;flex:1;min-width:0;display:flex;align-items:center}
+.tray{display:flex;gap:3px;overflow-x:auto;flex:1;min-width:0;padding:1px 0;
+  scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
+.tray::-webkit-scrollbar{display:none}
+.traymore{position:absolute;right:-4px;top:-4px;bottom:-4px;width:26px;display:none;
+  align-items:center;justify-content:flex-end;padding-right:2px;
+  font-size:15px;color:var(--gold);pointer-events:none;
+  background:linear-gradient(90deg,rgba(26,18,9,0),rgba(26,18,9,.92) 55%)}
+.traymore.show{display:flex}
 
+/* ---------- board ---------- */
 .frame{position:relative;overflow:hidden;padding:var(--pad);border-radius:9px;
-  background:linear-gradient(150deg,var(--frame-hi),var(--frame-lo));
   box-shadow:0 12px 30px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,228,186,.3)}
 .board{position:relative;z-index:2;width:var(--boardw);height:var(--boardh);
   border:1px solid var(--line);
-  background:linear-gradient(178deg,var(--wood-hi),var(--wood-mid) 48%,var(--wood-lo));
-  box-shadow:inset 0 0 22px rgba(46,22,2,.42),0 2px 5px rgba(0,0,0,.45);
+  box-shadow:0 2px 5px rgba(0,0,0,.45);
   cursor:pointer;touch-action:manipulation}
 .cells{position:absolute;inset:0;z-index:3;display:grid;
   grid-template-columns:repeat(8,var(--cell));grid-template-rows:repeat(16,var(--cell))}
-.boardgrain{z-index:4;opacity:.24}.boardband{z-index:4;opacity:.13}
 .sq{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .sq.lastcol{border-right:none}
 .sq.lastrow{border-bottom:none}
@@ -94,8 +108,6 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .layer{position:absolute;inset:0;pointer-events:none}
 .markers{z-index:6}
 .piecelayer{z-index:7}
-
-/* coordinate ring, drawn inside the uniform frame band */
 .coords{position:absolute;inset:0;z-index:5;pointer-events:none;
   font-family:Georgia,serif;font-size:8.5px;letter-spacing:.5px;color:rgba(255,236,205,.55)}
 .cxf{position:absolute;width:var(--cell);text-align:center;bottom:3px}
@@ -109,6 +121,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .pcw.gone{opacity:0;filter:blur(1.5px)}
 .pcw.lift .pc{transform:scale(1.13);box-shadow:0 5px 9px rgba(0,0,0,.6)}
 .pcw .pc{transition:transform .2s ease,box-shadow .2s ease}
+.pcw.doomed .pc{filter:saturate(.55) brightness(.8)}
 
 .pc{position:relative;width:calc(var(--cell) - 7px);height:calc(var(--cell) - 7px);
   display:flex;align-items:center;justify-content:center;
@@ -134,44 +147,47 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .pc.t.dk .tri{background:linear-gradient(160deg,#42301e,var(--dk-face2));filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.62))}
 .pc.t span{position:relative;z-index:2}
 .pc.t.lt span{color:var(--lt-ink)}.pc.t.dk span{color:var(--dk-ink)}
-.pc.p{border-radius:3px}
+.pc.p{border-radius:3px;flex-direction:column;justify-content:center;gap:1.5px}
 .pc.p.lt{background:linear-gradient(150deg,#f9ecc8,var(--lt-face2));border:1.5px solid var(--gold);
   box-shadow:0 0 0 1px rgba(226,180,92,.35),0 2px 3px rgba(0,0,0,.5),inset 0 -1px 2px rgba(120,86,32,.3)}
 .pc.p.dk{background:linear-gradient(150deg,#4a3520,var(--dk-face2));border:1.5px solid var(--gold);
   box-shadow:0 0 0 1px rgba(226,180,92,.3),0 2px 3px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.55)}
-/* the stepped crown shows one bar per surviving component, so the glyph
-   visibly thins as the stack is picked apart */
-.pc.p{flex-direction:column;justify-content:center;gap:1.5px}
 .pc.p .steps{display:flex;flex-direction:column;align-items:center;gap:.5px;opacity:.85}
 .pc.p .steps i{display:block;height:1.5px;border-radius:1px;background:var(--gold)}
 .pc.p span{margin-top:0}
 
-/* small chips for trays and lesson diagrams */
-.pc.tiny{width:20px;height:20px;font-size:8.5px}
+.pc.tiny{width:20px;height:20px;font-size:8.5px;flex:none}
 .pc.tiny.d3{font-size:6.5px}
 .pc.t.tiny{font-size:7.5px;padding-bottom:1px}
 .pc.t.tiny.d3{font-size:6px}
 .pc.p.tiny .steps{display:none}
 .pc.p.tiny span{margin-top:0}
-.pc.mid{width:30px;height:30px;font-size:11px}
+.pc.mid{width:30px;height:30px;font-size:11px;flex:none}
 .pc.mid.d3{font-size:8.5px}
 .pc.t.mid{font-size:10px}
 .pc.t.mid.d3{font-size:8px}
 .pc.p.mid .steps{display:none}
 .pc.p.mid span{margin-top:0}
 
-/* All marker styles are scoped to .markers so their short names can never
-   leak into panels, the log, or anywhere else that reuses a word like "cap". */
+/* markers, scoped so their short names can't leak */
 .markers .mk{position:absolute;width:var(--cell);height:var(--cell);
   display:flex;align-items:center;justify-content:center}
 .markers .sel{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--gold);
   box-shadow:0 0 10px rgba(226,180,92,.55)}
-.markers .dot{width:11px;height:11px;border-radius:50%;background:rgba(255,240,205,.62);
+.markers .dot{width:calc(var(--cell)*.27);height:calc(var(--cell)*.27);border-radius:50%;
+  background:rgba(255,240,205,.62);
   box-shadow:0 0 6px rgba(255,232,184,.45),inset 0 1px 1px rgba(0,0,0,.3)}
+.markers .hot{width:calc(var(--cell)*.34);height:calc(var(--cell)*.34);border-radius:50%;
+  background:rgba(220,109,76,.72);box-shadow:0 0 9px rgba(220,109,76,.65)}
 .markers .cap{position:absolute;inset:1px;border-radius:50%;border:2px dashed var(--alert);
   box-shadow:0 0 9px rgba(220,109,76,.5)}
+.markers .doom{position:absolute;inset:1px;border-radius:50%;border:2px solid var(--alert);
+  box-shadow:0 0 12px rgba(220,109,76,.75);animation:dm .8s infinite alternate}
+@keyframes dm{from{opacity:.55}to{opacity:1}}
 .markers .from{position:absolute;inset:4px;border-radius:6px;border:1.5px dashed rgba(255,238,200,.5)}
 .markers .to{position:absolute;inset:2px;border-radius:8px;border:1.5px solid rgba(255,238,200,.42)}
+.markers .go{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--alert);
+  box-shadow:0 0 12px rgba(220,109,76,.6)}
 .markers .hint{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
   box-shadow:0 0 10px rgba(143,191,106,.5)}
 .markers .tri-win{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
@@ -181,41 +197,50 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   animation:fl .34s ease-out}
 @keyframes fl{from{opacity:.95;transform:scale(.6)}to{opacity:0;transform:scale(1.5)}}
 
-.status{padding:8px 11px;display:flex;align-items:center;gap:9px;min-height:46px}
-.pulse{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none;
-  box-shadow:0 0 0 0 rgba(226,180,92,.7);animation:p 1.9s infinite}
-.pulse.think{background:var(--ui-dim)}
-.pulse.done{animation:none;background:var(--good)}
-@keyframes p{0%{box-shadow:0 0 0 0 rgba(226,180,92,.55)}70%{box-shadow:0 0 0 9px rgba(226,180,92,0)}100%{box-shadow:0 0 0 0 rgba(226,180,92,0)}}
+.status{padding:6px 11px;display:flex;align-items:center;min-height:42px}
 .status .main{font-size:12.5px;letter-spacing:.5px}
 .status .note{font-size:10px;color:var(--ui-dim);margin-top:2px;letter-spacing:.3px;line-height:1.45}
+.status.alert{border-color:rgba(220,109,76,.5)}
+.status.alert .main{color:var(--alert)}
 
-.bar{display:flex;gap:6px}
 .btn{flex:1;position:relative;overflow:hidden;border-radius:9px;cursor:pointer;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
-  border:1px solid var(--panel-edge);padding:10px 0;text-align:center;
+  border:1px solid var(--panel-edge);padding:11px 0;text-align:center;
   font-size:10.5px;letter-spacing:1.1px;color:var(--ui-dim);font-family:inherit}
 .btn:active{border-color:var(--gold);color:var(--gold)}
 .btn.gold{border-color:var(--gold);color:var(--gold)}
 
-.log{max-height:118px;overflow-y:auto;padding:8px 11px;font-size:10px;line-height:1.7;
+.log{max-height:300px;overflow-y:auto;padding:10px 14px;font-size:10.5px;line-height:1.75;
   color:var(--ui-dim);letter-spacing:.2px}
 .log div{white-space:pre-wrap}
 .log .you{color:#e8dcc2}
-.log .took{color:var(--alert)}      /* not .cap — that name belongs to the board marker */
+.log .took{color:var(--alert)}
 .log .win{color:var(--good)}
 
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(8,6,4,.86);
   display:none;justify-content:center;align-items:flex-start;padding:20px 14px;overflow-y:auto}
 .overlay.open{display:flex}
-.sheet{width:352px;position:relative;overflow:hidden;border-radius:11px;
+.sheet{width:352px;max-width:100%;position:relative;overflow:hidden;border-radius:11px;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
   border:1px solid var(--panel-edge)}
 .sheet>*{position:relative;z-index:2}
 .sheet h2{margin:0;padding:13px 14px 10px;font-size:11px;letter-spacing:2.6px;color:var(--gold);
   font-weight:normal;border-bottom:1px solid rgba(255,225,180,.09);
   display:flex;justify-content:space-between;align-items:center}
-.sheet h2 b{cursor:pointer;color:var(--ui-dim);font-weight:normal;font-size:14px}
+.sheet h2 b{cursor:pointer;color:var(--ui-dim);font-weight:normal;font-size:14px;padding:0 3px}
+
+/* tabs */
+.tabs{position:relative;display:flex;border-bottom:1px solid rgba(255,225,180,.09)}
+.tab{flex:1;text-align:center;padding:12px 0 11px;font-size:10px;letter-spacing:2px;
+  color:#6d6250;cursor:pointer;transition:color .22s ease}
+.tab.on{color:var(--ui-text)}
+.tabbar{position:absolute;bottom:-1px;left:0;width:50%;height:2px;border-radius:2px;
+  background:#f0e3ca;box-shadow:0 0 8px rgba(240,227,202,.45);
+  transition:transform .26s cubic-bezier(.4,0,.2,1)}
+.tabbar.right{transform:translateX(100%)}
+.tabpane{display:none}
+.tabpane.on{display:block}
+
 .row{display:flex;align-items:center;gap:10px;padding:11px 14px;
   border-bottom:1px solid rgba(255,225,180,.055);font-size:12px}
 .row .lbl{flex:1}
@@ -225,6 +250,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .seg div{flex:1;text-align:center;font-size:9.5px;letter-spacing:.6px;padding:8px 0;cursor:pointer;
   border-radius:6px;border:1px solid var(--panel-edge);color:var(--ui-dim)}
 .seg div.on{border-color:var(--gold);color:var(--gold);background:rgba(226,180,92,.10)}
+
 .rules{padding:4px 15px 15px;font-size:11.5px;line-height:1.72;color:#d9cbb0}
 .rules h3{font-size:10.5px;letter-spacing:2px;color:var(--gold);font-weight:normal;margin:16px 0 6px}
 .rules p{margin:6px 0}
@@ -233,7 +259,6 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .rules ul{margin:6px 0;padding-left:17px}
 .rules li{margin:4px 0}
 
-/* capture lesson */
 .lsdiagram{display:flex;align-items:center;justify-content:center;gap:9px;
   padding:16px 14px 4px;flex-wrap:wrap}
 .lsop{font-size:17px;color:var(--gold)}
@@ -243,7 +268,6 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .lstext em{color:var(--ui-text);font-style:normal;border-bottom:1px solid rgba(226,180,92,.35)}
 .lswho{padding:0 14px;font-size:10px;letter-spacing:1.4px;color:var(--ui-dim);text-align:center}
 
-/* pyramid inspector */
 .pytot{text-align:center;font-size:23px;color:var(--gold);padding:14px 0 3px;letter-spacing:1px}
 .pytot s{color:var(--ui-dim);font-size:13px;letter-spacing:.5px}
 .pysub{text-align:center;font-size:9.5px;letter-spacing:1.6px;color:var(--ui-dim);padding-bottom:10px}
@@ -253,54 +277,78 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .pyname{flex:1}
 .pygrant{font-size:9.5px;color:var(--ui-dim);margin-top:2px}
 .pytaken{font-size:8.5px;letter-spacing:1.2px;color:var(--alert)}
-.pymove{padding:11px 16px;font-size:11.5px;
-  border-top:1px solid rgba(255,225,180,.08);margin-top:7px}
+.pymove{padding:11px 16px;font-size:11.5px;border-top:1px solid rgba(255,225,180,.08);margin-top:7px}
 .pynote{padding:5px 16px 14px;font-size:10.5px;line-height:1.68;color:var(--ui-dim)}
 .pynote em{color:var(--ui-text);font-style:normal}
+
+/* game over */
+.endwrap{padding:22px 18px 6px;text-align:center}
+.endkicker{font-size:9.5px;letter-spacing:2.6px;color:var(--ui-dim)}
+.endtitle{font-size:27px;letter-spacing:1.5px;margin:7px 0 4px}
+.endtitle.win{color:var(--good)}
+.endtitle.lose{color:var(--alert)}
+.endtitle.draw{color:var(--gold)}
+.endsub{font-size:12px;color:#d9cbb0;line-height:1.6}
+.endvals{display:flex;justify-content:center;gap:7px;padding:15px 0 6px;flex-wrap:wrap}
+.endstat{font-size:10.5px;color:var(--ui-dim);padding-bottom:12px;line-height:1.7}
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute">
   <filter id="fGrain" x="0" y="0" width="100%" height="100%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.72 0.009" numOctaves="5" seed="17"/>
-    <feColorMatrix type="saturate" values="0"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.45 0.01" numOctaves="6" seed="17"/>
+    <feColorMatrix type="saturate" values="0.5"/>
   </filter>
   <filter id="fBand" x="0" y="0" width="100%" height="100%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.13 0.0035" numOctaves="3" seed="5"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.36 0.011" numOctaves="3" seed="5"/>
     <feColorMatrix type="saturate" values="0"/>
   </filter>
 </svg>
 
 <div class="app">
   <div class="hdr">
-    <div>
-      <h1>RITHMOMACHIA</h1>
-      <div class="sub">THE PHILOSOPHER'S GAME</div>
-    </div>
+    <h1>RITHMOMACHIA</h1>
     <div class="icons">
-      <div class="icon" id="btnRules"><span>?</span></div>
-      <div class="icon" id="btnMenu"><span>☰</span></div>
+      <div class="icon" id="btnHint" title="Hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 18.5h5M10.5 21.5h3"/>
+          <path d="M12 2.5a6.2 6.2 0 0 0-3.6 11.3c.6.4 1 1.1 1 1.9v.8h5.2v-.8c0-.8.4-1.5 1-1.9A6.2 6.2 0 0 0 12 2.5z"/>
+        </svg>
+      </div>
+      <div class="icon" id="btnUndo" title="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 8.5h9.5a5.5 5.5 0 1 1 0 11H8"/>
+          <path d="M4.5 8.5 8.5 4.5M4.5 8.5l4 4"/>
+        </svg>
+      </div>
+      <div class="icon" id="btnRules" title="How to play"><span>?</span></div>
+      <div class="icon" id="btnMenu" title="Menu"><span>☰</span></div>
     </div>
   </div>
 
   <div class="panel army" id="armyTop">
-    <div class="armyrow">
-      <div class="chip dk" id="chipTop"></div>
-      <div class="nm" id="nmTop">Odds</div>
-      <div class="meta" id="metaTop"></div>
+    <div class="nm" id="nmTop">Rival</div>
+    <div class="traywrap">
+      <div class="tray" id="trayTop"></div>
+      <div class="traymore" id="moreTop">›</div>
     </div>
-    <div class="tray" id="trayTop"></div>
   </div>
 
   <div class="frame">
-    <svg class="woodgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
-    <svg class="woodband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
+    <div class="woodsurface framewood">
+      <svg class="woodgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
+      <svg class="woodband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
+    </div>
     <div class="coords" id="coordLayer"></div>
     <div class="board" id="board">
+      <div class="woodsurface boardwood">
+        <svg class="woodgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
+        <svg class="woodband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
+      </div>
       <div class="cells" id="cells"></div>
-      <svg class="woodgrain boardgrain" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fGrain)"/></svg>
-      <svg class="woodband boardband" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#fBand)"/></svg>
       <div class="midline"></div>
       <div class="layer markers" id="markers"></div>
       <div class="layer piecelayer" id="piecelayer"></div>
@@ -308,29 +356,36 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   </div>
 
   <div class="panel army active" id="armyBot">
-    <div class="armyrow">
-      <div class="chip lt" id="chipBot"></div>
-      <div class="nm" id="nmBot">Evens — you</div>
-      <div class="meta" id="metaBot"></div>
+    <div class="nm" id="nmBot">You</div>
+    <div class="traywrap">
+      <div class="tray" id="trayBot"></div>
+      <div class="traymore" id="moreBot">›</div>
     </div>
-    <div class="tray" id="trayBot"></div>
   </div>
 
-  <div class="panel status">
-    <div class="pulse" id="pulse"></div>
+  <div class="panel status" id="statusPanel">
     <div>
       <div class="main" id="stMain">Your move</div>
       <div class="note" id="stNote">Tap one of your pieces</div>
     </div>
   </div>
+</div>
 
-  <div class="bar">
-    <div class="btn" id="btnHint"><span>HINT</span></div>
-    <div class="btn" id="btnUndo"><span>UNDO</span></div>
-    <div class="btn" id="btnLog"><span>LOG</span></div>
+<!-- ===== GAME OVER ===== -->
+<div class="overlay" id="ovEnd">
+  <div class="sheet">
+    <div class="endwrap">
+      <div class="endkicker" id="endKicker"></div>
+      <div class="endtitle" id="endTitle"></div>
+      <div class="endsub" id="endSub"></div>
+      <div class="endvals" id="endVals"></div>
+    </div>
+    <div class="endstat" id="endStat"></div>
+    <div style="padding:0 14px 15px;display:flex;gap:6px">
+      <div class="btn" id="endClose"><span>SEE THE BOARD</span></div>
+      <div class="btn gold" id="endNew"><span>NEW GAME</span></div>
+    </div>
   </div>
-
-  <div class="panel log" id="logPanel" style="display:none"></div>
 </div>
 
 <!-- ===== CAPTURE LESSON ===== -->
@@ -348,7 +403,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   </div>
 </div>
 
-<!-- ===== PYRAMID INSPECTOR ===== -->
+<!-- ===== PYRAMID ===== -->
 <div class="overlay" id="ovPyr">
   <div class="sheet">
     <h2><span id="pyTitle">PYRAMID</span> <b data-close="ovPyr">✕</b></h2>
@@ -361,30 +416,46 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   </div>
 </div>
 
-<!-- ===== MENU ===== -->
+<!-- ===== MENU (tabbed) ===== -->
 <div class="overlay" id="ovMenu">
   <div class="sheet">
-    <h2>GAME MENU <b data-close="ovMenu">✕</b></h2>
-    <div class="grp">LEARNING</div>
-    <div class="row"><div class="lbl">Explain every capture<div class="desc">A card pops up showing the arithmetic behind it</div></div></div>
-    <div class="seg" data-set="learn"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
-    <div class="row"><div class="lbl">Board coordinates</div></div>
-    <div class="seg" data-set="coords"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
-    <div class="row"><div class="lbl">Warn me about pieces in danger<div class="desc">Rings your pieces the opponent can currently take</div></div></div>
-    <div class="seg" data-set="danger"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+    <h2>MENU <b data-close="ovMenu">✕</b></h2>
+    <div class="tabs">
+      <div class="tab on" data-tab="set">SETTINGS</div>
+      <div class="tab" data-tab="log">GAME LOG</div>
+      <div class="tabbar" id="tabBar"></div>
+    </div>
 
-    <div class="grp">NEW GAME</div>
-    <div class="row"><div class="lbl">Play as</div></div>
-    <div class="seg" data-set="side"><div data-v="e" class="on">EVENS</div><div data-v="o">ODDS</div></div>
-    <div class="row"><div class="lbl">Victory condition<div class="desc" id="vcDescTxt"></div></div></div>
-    <div class="seg" data-set="mode"><div data-v="skirmish">SKIRMISH</div><div data-v="standard" class="on">STANDARD</div><div data-v="full">FULL</div></div>
-    <div class="row"><div class="lbl">Opponent</div></div>
-    <div class="seg" data-set="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
+    <div class="tabpane on" id="paneSet">
+      <div class="grp">LEARNING AIDS</div>
+      <div class="row"><div class="lbl" id="aidDesc"></div></div>
+      <div class="seg" data-set="aids">
+        <div data-v="both" class="on">EXPLAIN &amp; PREVIEW</div>
+        <div data-v="preview">PREVIEW ONLY</div>
+        <div data-v="off">OFF</div>
+      </div>
+      <div class="row"><div class="lbl">Warn me about pieces in danger<div class="desc">Rings pieces your rival could take on its next move</div></div></div>
+      <div class="seg" data-set="danger"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+      <div class="row"><div class="lbl">Board coordinates</div></div>
+      <div class="seg" data-set="coords"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
+      <div class="row"><div class="lbl">Vibration</div></div>
+      <div class="seg" data-set="haptics"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
 
-    <div class="grp">TABLE</div>
-    <div class="row"><div class="lbl">Move speed</div></div>
-    <div class="seg" data-set="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
-    <div style="padding:12px 14px 15px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+      <div class="grp">NEW GAME</div>
+      <div class="row"><div class="lbl">Play as<div class="desc">Dark moves first. Light has the easier numbers.</div></div></div>
+      <div class="seg" data-set="side"><div data-v="e" class="on">LIGHT</div><div data-v="o">DARK</div></div>
+      <div class="row"><div class="lbl">Victory condition<div class="desc" id="vcDescTxt"></div></div></div>
+      <div class="seg" data-set="mode"><div data-v="skirmish">SKIRMISH</div><div data-v="standard" class="on">STANDARD</div><div data-v="full">FULL</div></div>
+      <div class="row"><div class="lbl">Rival strength</div></div>
+      <div class="seg" data-set="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
+      <div class="row"><div class="lbl">Move speed</div></div>
+      <div class="seg" data-set="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
+      <div style="padding:12px 14px 15px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+    </div>
+
+    <div class="tabpane" id="paneLog">
+      <div class="log" id="logPanel"></div>
+    </div>
   </div>
 </div>
 
@@ -411,7 +482,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
       <p><b>Assault</b> — you and an enemy share a row or column with only empty squares between. Count them (<i>n</i>). Capture if your value × <i>n</i>, or your value ÷ <i>n</i>, equals theirs.<br><span class="ex">your 8, four empty squares from their 32</span></p>
       <p><b>Siege</b> — an enemy piece has no legal move left and at least one blocker is yours. Board edges count as walls.</p>
       <h3>THE PYRAMIDS</h3>
-      <p>A pyramid is a <b>stack of separate pieces</b>. The light one is squares 36 and 25, triangles 16 and 9, circles 4 and 1 — total <b>91</b>. The dark one is squares 64 and 49, triangles 36 and 25, circle 16 — total <b>190</b>. It attacks with its total <i>or</i> any single component, and can be taken whole or <b>picked apart</b> one component at a time. Each component grants a move distance, so a pyramid that loses its circles can no longer step one square.</p>
+      <p>A pyramid is a <b>stack of separate pieces</b>. The light one is squares 36 and 25, triangles 16 and 9, circles 4 and 1 — total <b>91</b>. The dark one is squares 64 and 49, triangles 36 and 25, circle 16 — total <b>190</b>. Each component grants a move distance, so a pyramid that loses its circles can no longer step one square.</p>
       <p><b>Tap any pyramid to see inside it</b> — your own needs a second tap, since the first one selects it.</p>
       <h3>WINNING</h3>
       <p>Get <b>three pieces into the enemy half</b>, in a straight line, evenly spaced, values rising or falling in a progression:</p>
@@ -421,6 +492,8 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
         <li><b>Harmonic</b> — a : c = (b−a) : (c−b) &nbsp;<span class="ex">9, 15, 45</span></li>
       </ul>
       <p>Capturing enough pieces also wins, depending on the setting. And if you ever have <b>no legal move</b>, you lose.</p>
+      <h3>LIGHT AND DARK</h3>
+      <p>The sources call these armies <i>Evens</i> and <i>Odds</i>, after the numbers each is built from — the first four evens (2, 4, 6, 8) or odds (3, 5, 7, 9). Only the circles keep that parity; the triangles and squares scramble it. Dark's pieces are worth more in total, which is less of an advantage than it sounds: it means your rival scores faster off them. Dark moves first to compensate for Light's more flexible small numbers.</p>
     </div>
   </div>
 </div>
@@ -449,7 +522,6 @@ const PYR={
 };
 const other=s=>s==='e'?'o':'e';
 const inB=(r,c)=>r>=0&&r<16&&c>=0&&c<8;
-/* fixed board notation: file letter A-H, rank 1 at the Even back rank */
 const coord=(r,c)=>String.fromCharCode(65+c)+(16-r);
 
 function mkState(){
@@ -470,7 +542,6 @@ function clone(S){
     turn:S.turn,caps:{e:S.caps.e.slice(),o:S.caps.o.slice()},quiet:S.quiet,ply:S.ply};
 }
 const at=(S,r,c)=>{const i=S.grid[r*8+c];return i<0?null:S.pieces[i];};
-
 function distances(p){
   if(p.shape!=='p') return [DIST[p.shape]];
   const s=new Set(); for(const x of p.comps) s.add(DIST[x.shape]);
@@ -728,10 +799,11 @@ function chooseMove(S,side,level){
   top.sort((a,b)=>b.final-a.final);
   return top[0].mv;
 }
+const capTotal=list=>list.reduce((a,b)=>a+b.v,0);
 function checkWin(S,side,mode){
   const t=findTriumph(S,side);
   if(t) return {winner:side,how:'triumph',triumph:t};
-  const n=S.caps[side].length, v=S.caps[side].reduce((a,b)=>a+b.v,0);
+  const n=S.caps[side].length, v=capTotal(S.caps[side]);
   if(mode==='skirmish'&&(n>=5||v>=150)) return {winner:side,how:'captures'};
   if(mode==='standard'&&n>=8) return {winner:side,how:'captures'};
   return null;
@@ -742,17 +814,19 @@ function checkWin(S,side,mode){
 <script>
 const PAD=16;
 let CELL=40;
-/* --cell is a min()/max() expression, and getComputedStyle hands those back
-   unresolved — so measure the board itself. clientWidth excludes the border,
-   which makes it exactly 8 cells wide. */
+/* --cell is a min()/max() expression and getComputedStyle returns those
+   unresolved, so measure the board: clientWidth excludes the border and is
+   therefore exactly 8 cells. */
 function readCell(){
   const w=document.getElementById('board').clientWidth;
   if(w>0) CELL=w/8;
 }
 readCell();
+
 let S, human='e', ai='o', mode='standard', level='novice', speed='normal';
-let dangerOn=true, learnOn=true, coordsOn=true;
+let aids='both', dangerOn=true, coordsOn=true, hapticsOn=true;
 let busy=false, over=false, selected=null, hintMv=null, undoStack=[];
+let previewDest=null, previewCaps=null, dangerCache=null, lastResult=null;
 const els=new Map(), learnMuted=new Set();
 
 const $=id=>document.getElementById(id);
@@ -760,7 +834,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms*SPD()));
 const SPD=()=>speed==='slow'?1.45:speed==='fast'?0.6:1;
 const dR=r=>human==='e'?r:15-r;
 const dC=c=>human==='e'?c:7-c;
-const sideName=s=>s==='e'?'Evens':'Odds';
+const explainOn=()=>aids==='both';
+const previewOn=()=>aids==='both'||aids==='preview';
+function buzz(p){ if(hapticsOn&&navigator.vibrate){ try{navigator.vibrate(p);}catch(e){} } }
 
 (function buildCells(){
   const cells=$('cells');
@@ -771,6 +847,7 @@ const sideName=s=>s==='e'?'Evens':'Odds';
   }
 })();
 
+/* ---------- pieces ---------- */
 function chipNode(v,shape,side,size,steps){
   const el=document.createElement('div');
   el.className='pc '+shape+' '+(side==='e'?'lt':'dk')+(size?' '+size:'')+(String(v).length>2?' d3':'');
@@ -779,12 +856,9 @@ function chipNode(v,shape,side,size,steps){
     const s=document.createElement('span'); s.textContent=v; el.appendChild(s);
   }else if(shape==='p'){
     const st=document.createElement('div'); st.className='steps';
-    const n=steps||3;                                  // one bar per surviving component
-    for(let i=0;i<n;i++){
-      const b=document.createElement('i');
-      b.style.width=(4+i*1.7).toFixed(1)+'px';
-      st.appendChild(b);
-    }
+    const n=steps||3;
+    for(let i=0;i<n;i++){ const b=document.createElement('i');
+      b.style.width=(4+i*1.7).toFixed(1)+'px'; st.appendChild(b); }
     el.appendChild(st);
     const s=document.createElement('span'); s.textContent=v; el.appendChild(s);
   }else el.textContent=v;
@@ -797,28 +871,18 @@ function pieceNode(p){
   return w;
 }
 function paint(w,p){ w.innerHTML=''; w.appendChild(chipNode(p.v,p.shape,p.side,null,stepsOf(p))); }
+function place(w,p){ w.style.transform=`translate(${dC(p.c)*CELL}px,${dR(p.r)*CELL}px)`; }
 
-/* ---------- pyramid contents ---------- */
 const stillIn=(p,v)=>p.comps.some(c=>c.v===v);
 function stackLine(p){
-  return PYR[p.side].map(f=>stillIn(p,f.v)
-    ? `${f.v}` : `<s style="opacity:.45">${f.v}</s>`).join(' · ');
-}
-function selectionNote(){
-  if(selected==null) return 'Tap one of your pieces';
-  const p=S.pieces[selected];
-  if(p.shape!=='p'){
-    const d=DIST[p.shape];
-    return `${SHAPE_NAME[p.shape]} ${p.v} — moves exactly ${d} ${d===1?'square':'squares'}`;
-  }
-  return stackLine(p)+' &nbsp;·&nbsp; tap again to inspect';
+  return PYR[p.side].map(f=>stillIn(p,f.v)?`${f.v}`:`<s style="opacity:.45">${f.v}</s>`).join(' · ');
 }
 function showPyramid(p){
   const full=PYR[p.side], total=full.reduce((a,x)=>a+x.v,0);
   $('pyTitle').textContent=(p.side==='e'?'LIGHT':'DARK')+' PYRAMID';
   $('pyTot').innerHTML = p.v===total ? String(p.v) : `${p.v} <s>of ${total}</s>`;
   const box=$('pyStack'); box.innerHTML='';
-  for(const f of [...full].reverse()){           // smallest on top, like a real pyramid
+  for(const f of [...full].reverse()){
     const gone=!stillIn(p,f.v);
     const row=document.createElement('div');
     row.className='pyrow'+(gone?' lostrow':'');
@@ -836,7 +900,6 @@ function showPyramid(p){
     : 'Nothing left of it.';
   $('ovPyr').classList.add('open');
 }
-function place(w,p){ w.style.transform=`translate(${dC(p.c)*CELL}px,${dR(p.r)*CELL}px)`; }
 
 function buildCoords(){
   const f=$('coordLayer'); f.innerHTML='';
@@ -872,7 +935,11 @@ function rebuild(){
   buildCoords(); clearMarks(); updatePanels();
 }
 
-function clearMarks(){ $('markers').innerHTML=''; }
+/* ---------- markers ---------- */
+function clearMarks(){
+  $('markers').innerHTML='';
+  for(const w of els.values()) w.classList.remove('doomed');
+}
 function mark(r,c,inner){
   const m=document.createElement('div'); m.className='mk';
   m.style.transform=`translate(${dC(c)*CELL}px,${dR(r)*CELL}px)`;
@@ -880,44 +947,88 @@ function mark(r,c,inner){
   m.appendChild(i); $('markers').appendChild(m);
 }
 let lastFrom=null,lastTo=null;
+
+/* which of my pieces could the rival actually take on its next move? */
+function dangerSet(){
+  if(dangerCache) return dangerCache;
+  const out=new Set();
+  for(const mv of genMoves(S,ai)){
+    const S2=clone(S);
+    for(const c of applyMove(S2,mv)) out.add(c.tid);
+  }
+  dangerCache=out;
+  return out;
+}
+function capsFor(p,r,c){
+  const S2=clone(S);
+  return applyMove(S2,{id:p.id,fr:p.r,fc:p.c,tr:r,tc:c});
+}
 function showSelection(){
   clearMarks();
   if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
   if(lastTo) mark(lastTo[0],lastTo[1],'to');
-  if(dangerOn&&!over&&S.turn===human) for(const c of sweep(S,ai)){
-    const T=S.pieces[c.tid]; if(T.alive) mark(T.r,T.c,'cap');
+
+  if(previewDest){
+    mark(previewDest[0],previewDest[1],'go');
+    for(const c of previewCaps){
+      const T=S.pieces[c.tid];
+      if(T&&T.alive) mark(T.r,T.c,'doom');
+      const w=els.get(c.tid); if(w) w.classList.add('doomed');
+    }
+  }
+  if(dangerOn&&!over&&S.turn===human&&!previewDest&&dangerCache){
+    for(const id of dangerCache){
+      const T=S.pieces[id]; if(T&&T.alive) mark(T.r,T.c,'cap');
+    }
   }
   if(hintMv){ mark(hintMv.fr,hintMv.fc,'hint'); mark(hintMv.tr,hintMv.tc,'hint'); }
   if(selected!=null){
     const p=S.pieces[selected];
     mark(p.r,p.c,'sel');
-    for(const [r,c] of legalDests(S,p)) mark(r,c,'dot');
+    for(const [r,c] of legalDests(S,p)){
+      if(previewDest&&previewDest[0]===r&&previewDest[1]===c) continue;
+      const hot=previewOn()&&capsFor(p,r,c).length>0;
+      mark(r,c,hot?'hot':'dot');
+    }
   }
 }
 
-function renderTrays(){
-  for(const [side,el] of [[ai,$('trayTop')],[human,$('trayBot')]]){
-    el.innerHTML='';
-    for(const t of S.caps[side]) el.appendChild(chipNode(t.v,t.shape,other(side),'tiny'));
-  }
+/* ---------- panels ---------- */
+function progressText(side){
+  const n=S.caps[side].length, v=capTotal(S.caps[side]);
+  if(mode==='standard') return `${n}/8 pcs`;
+  if(mode==='skirmish') return (v/150 >= n/5) ? `${v}/150 pts` : `${n}/5 pcs`;
+  const t=S.pieces.filter(p=>p.alive&&p.side===side&&inTerr(side,p.r)).length;
+  return `${Math.min(t,3)}/3 in camp`;
+}
+function renderTray(side,tray,more){
+  tray.innerHTML='';
+  for(const t of S.caps[side]) tray.appendChild(chipNode(t.v,t.shape,other(side),'tiny'));
+  requestAnimationFrame(()=>{
+    const over=tray.scrollWidth>tray.clientWidth+2;
+    const atEnd=tray.scrollLeft+tray.clientWidth>=tray.scrollWidth-3;
+    more.classList.toggle('show',over&&!atEnd);
+  });
 }
 function updatePanels(){
-  const alive=s=>S.pieces.filter(p=>p.alive&&p.side===s);
-  const val=s=>alive(s).reduce((a,p)=>a+p.v,0);
-  $('chipTop').className='chip '+(ai==='e'?'lt':'dk');
-  $('chipBot').className='chip '+(human==='e'?'lt':'dk');
-  $('nmTop').textContent=sideName(ai);
-  $('nmBot').textContent=sideName(human)+' — you';
-  $('metaTop').textContent=`${alive(ai).length} pieces · ${val(ai)} · taken ${S.caps[ai].length}`;
-  $('metaBot').textContent=`${alive(human).length} pieces · ${val(human)} · taken ${S.caps[human].length}`;
+  $('nmTop').innerHTML=`Rival <i>(${progressText(ai)})</i>`;
+  $('nmBot').innerHTML=`You <i>(${progressText(human)})</i>`;
   $('armyTop').classList.toggle('active',S.turn===ai&&!over);
   $('armyBot').classList.toggle('active',S.turn===human&&!over);
-  renderTrays();
+  renderTray(ai,$('trayTop'),$('moreTop'));
+  renderTray(human,$('trayBot'),$('moreBot'));
 }
-function setStatus(main,note,cls){
+for(const [t,m] of [['trayTop','moreTop'],['trayBot','moreBot']]){
+  $(t).addEventListener('scroll',()=>{
+    const el=$(t);
+    const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-3;
+    $(m).classList.toggle('show',el.scrollWidth>el.clientWidth+2&&!atEnd);
+  });
+}
+function setStatus(main,note,alert){
   $('stMain').textContent=main;
   $('stNote').innerHTML=note||'';
-  $('pulse').className='pulse'+(cls?' '+cls:'');
+  $('statusPanel').classList.toggle('alert',!!alert);
 }
 function log(txt,cls){
   const d=document.createElement('div');
@@ -932,14 +1043,19 @@ function describe(p,mv,fromR,fromC){
                       : (dC(mv.tc)<dC(fromC)?'left':'right');
   return `${SHAPE_NAME[p.shape]} ${p.v} - ${n} ${word} to ${coord(mv.tr,mv.tc)}`;
 }
+function selectionNote(){
+  if(selected==null) return 'Tap one of your pieces';
+  const p=S.pieces[selected];
+  if(p.shape!=='p'){
+    const d=DIST[p.shape];
+    return `${SHAPE_NAME[p.shape]} ${p.v} — moves exactly ${d} ${d===1?'square':'squares'}`;
+  }
+  return stackLine(p)+' &nbsp;·&nbsp; tap again to inspect';
+}
 
 /* ---------- capture lesson ---------- */
-const LESSON={
-  encounter:{t:'CAPTURE BY ENCOUNTER'},
-  ambush:{t:'CAPTURE BY AMBUSH'},
-  assault:{t:'CAPTURE BY ASSAULT'},
-  siege:{t:'CAPTURE BY SIEGE'}
-};
+const LESSON={encounter:'CAPTURE BY ENCOUNTER',ambush:'CAPTURE BY AMBUSH',
+  assault:'CAPTURE BY ASSAULT',siege:'CAPTURE BY SIEGE'};
 function lessonText(c,byHuman){
   const yours=byHuman?'Your':'Their', theirs=byHuman?'their':'your';
   const a=c.atk[0]||{v:'?',shape:'c'};
@@ -953,7 +1069,7 @@ function lessonText(c,byHuman){
     }
     case 'assault':{
       const dir=c.op==='×'?`${a.v} × ${c.n}`:`${a.v} ÷ ${c.n}`;
-      return `An assault reaches across the board. ${yours} <em>${SHAPE_NAME[a.shape]} ${a.v}</em> shares a row or column with that piece, with <em>${c.n} empty ${c.n===1?'square':'squares'}</em> lying between them. Because ${dir} = ${c.value}, the piece falls. Block the lane and the threat disappears.`;
+      return `An assault reaches across the board. ${yours} <em>${SHAPE_NAME[a.shape]} ${a.v}</em> shares a row or column with that piece, with <em>${c.n} empty ${c.n===1?'square':'squares'}</em> between them. Because ${dir} = ${c.value}, the piece falls. Block the lane and the threat disappears.`;
     }
     case 'siege':
       return `${theirs.charAt(0).toUpperCase()+theirs.slice(1)} <em>${c.desc}</em> had nowhere legal to go — every square it could reach was occupied or off the board, and at least one blocker was ${byHuman?'yours':'theirs'}. A piece with no move is captured where it stands. No arithmetic required.`;
@@ -962,8 +1078,8 @@ function lessonText(c,byHuman){
 }
 function showLesson(c,byHuman){
   return new Promise(resolve=>{
-    $('lsTitle').textContent=LESSON[c.kind].t;
-    $('lsWho').textContent=byHuman?'YOU CAPTURED':'THE OPPONENT CAPTURED';
+    $('lsTitle').textContent=LESSON[c.kind];
+    $('lsWho').textContent=byHuman?'YOU CAPTURED':'YOUR RIVAL CAPTURED';
     const dg=$('lsDiagram'); dg.innerHTML='';
     const op=t=>{const d=document.createElement('div');d.className='lsop';d.textContent=t;return d;};
     if(c.kind==='siege'){
@@ -1000,7 +1116,7 @@ function showLesson(c,byHuman){
 /* ---------- turn loop ---------- */
 async function startTurn(){
   if(over) return;
-  hintMv=null;
+  hintMv=null; previewDest=null; previewCaps=null;
   const side=S.turn;
   if(S.quiet>=100){ endGame({draw:true}); return; }
   if(genMoves(S,side).length===0){ endGame({winner:other(side),how:'blocked'}); return; }
@@ -1009,9 +1125,10 @@ async function startTurn(){
     busy=false; selected=null;
     setStatus('Your move','Tap one of your pieces');
     showSelection();
+    if(dangerOn) setTimeout(()=>{ dangerSet(); if(!busy&&!over) showSelection(); },30);
   }else{
     busy=true; selected=null;
-    setStatus(sideName(ai)+' is considering…','','think');
+    setStatus('Rival is considering…','');
     showSelection();
     await sleep(700);
     const mv=chooseMove(S,ai,level);
@@ -1020,7 +1137,9 @@ async function startTurn(){
   }
 }
 async function performMove(mv){
-  busy=true; selected=null; hintMv=null; clearMarks();
+  busy=true; selected=null; hintMv=null;
+  previewDest=null; previewCaps=null; dangerCache=null;
+  clearMarks();
   const p=S.pieces[mv.id];
   const side=p.side, fromR=p.r, fromC=p.c, byHuman=(side===human);
   const desc=describe(p,mv,fromR,fromC);
@@ -1029,10 +1148,11 @@ async function performMove(mv){
   lastFrom=[fromR,fromC]; lastTo=[mv.tr,mv.tc];
   const w=els.get(p.id);
   w.classList.add('lift');
+  buzz(10);
   await sleep(110);
   place(w,p);
-  setStatus(byHuman?'You moved':sideName(side)+' moved',desc,'done');
-  log((byHuman?'You: ':sideName(side)+': ')+desc, byHuman?'you':'');
+  setStatus(byHuman?'You moved':'Rival moved',desc);
+  log((byHuman?'You: ':'Rival: ')+desc, byHuman?'you':'');
   await sleep(520);
   w.classList.remove('lift');
   showSelection();
@@ -1041,9 +1161,10 @@ async function performMove(mv){
     const T=S.pieces[c.tid], tw=els.get(c.tid);
     if(tw){ const f=document.createElement('div'); f.className='flash';
       tw.appendChild(f); setTimeout(()=>f.remove(),400); }
-    const who=byHuman?'You captured':sideName(side)+' captured';
+    buzz(byHuman?28:[0,18,50,18]);
+    const who=byHuman?'You captured':'Rival captured';
     log(`   ↳ ${who} ${c.desc} at ${c.sq} ${c.text}`,'took');
-    setStatus(who+' '+c.desc, c.text, 'done');
+    setStatus(who+' '+c.desc, c.text, !byHuman);
     await sleep(300);
     if(c.comp<0){
       if(tw){ tw.classList.add('dying');
@@ -1053,7 +1174,7 @@ async function performMove(mv){
     }else if(tw&&T.alive) paint(tw,T);
     updatePanels();
     await sleep(260);
-    if(learnOn&&!learnMuted.has(c.kind)) await showLesson(c,byHuman);
+    if(explainOn()&&!learnMuted.has(c.kind)) await showLesson(c,byHuman);
   }
   updatePanels(); showSelection();
 
@@ -1062,29 +1183,56 @@ async function performMove(mv){
   await sleep(430);
   startTurn();
 }
+
 function endGame(res){
-  over=true; busy=true; clearMarks();
+  over=true; busy=true; lastResult=res; clearMarks();
   if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
+  let kicker,title,sub,cls;
   if(res.draw){
-    setStatus('Drawn','A hundred moves with nothing taken.','done');
-    log('— Drawn by inactivity —','win'); updatePanels(); return;
-  }
-  const youWon=res.winner===human;
-  if(res.how==='triumph'){
-    for(const [r,c] of res.triumph.cells) mark(r,c,'tri-win');
-    const t=res.triumph;
-    setStatus(youWon?'You win — triumph!':sideName(res.winner)+' triumphs',
-      `${t.grade} triumph · ${t.type} progression · ${t.vals.join(' · ')}`,'done');
-    log(`— ${youWon?'You':sideName(res.winner)} won by ${t.grade} triumph (${t.type}: ${t.vals.join(', ')}) —`,'win');
-  }else if(res.how==='captures'){
-    setStatus(youWon?'You win':sideName(res.winner)+' wins','Enough pieces taken.','done');
-    log(`— ${youWon?'You':sideName(res.winner)} won on captures —`,'win');
+    kicker='NO RESULT'; title='Drawn'; cls='draw';
+    sub='A hundred moves passed with nothing taken.';
+    setStatus('Drawn','A hundred moves with nothing taken.');
+    log('— Drawn by inactivity —','win');
   }else{
-    setStatus(youWon?'You win':sideName(res.winner)+' wins',
-      sideName(other(res.winner))+' has no legal move.','done');
-    log(`— ${sideName(other(res.winner))} was blocked —`,'win');
+    const youWon=res.winner===human;
+    cls=youWon?'win':'lose';
+    kicker=youWon?'VICTORY':'DEFEAT';
+    if(res.how==='triumph'){
+      for(const [r,c] of res.triumph.cells) mark(r,c,'tri-win');
+      const t=res.triumph;
+      title=youWon?'You triumph':'Rival triumphs';
+      sub=`A <b style="color:var(--gold);font-weight:normal">${t.grade} triumph</b> — ${t.vals.join(', ')} in ${t.type} progression, standing in enemy ground.`;
+      setStatus(youWon?'You win — triumph!':'Rival triumphs',
+        `${t.grade} triumph · ${t.type} · ${t.vals.join(' · ')}`);
+      log(`— ${youWon?'You':'Rival'} won by ${t.grade} triumph (${t.type}: ${t.vals.join(', ')}) —`,'win');
+    }else if(res.how==='captures'){
+      title=youWon?'You win':'Rival wins';
+      sub='Enough pieces taken to end it.';
+      setStatus(title,'Enough pieces taken.');
+      log(`— ${youWon?'You':'Rival'} won on captures —`,'win');
+    }else{
+      title=youWon?'You win':'Rival wins';
+      sub=(youWon?'Your rival has':'You have')+' no legal move left.';
+      setStatus(title,sub);
+      log(`— ${youWon?'Rival':'You'} had no legal move —`,'win');
+    }
   }
+  $('endKicker').textContent=kicker;
+  $('endTitle').textContent=title;
+  $('endTitle').className='endtitle '+cls;
+  $('endSub').innerHTML=sub;
+  const vals=$('endVals'); vals.innerHTML='';
+  if(res.triumph) for(let i=0;i<res.triumph.vals.length;i++){
+    if(i) { const d=document.createElement('div'); d.className='lsop'; d.textContent='·'; vals.appendChild(d); }
+    vals.appendChild(chipNode(res.triumph.vals[i],'c',res.winner,'mid'));
+  }
+  $('endStat').innerHTML=
+    `<div style="text-align:center">You took ${S.caps[human].length} (${capTotal(S.caps[human])} pts) · `+
+    `Rival took ${S.caps[ai].length} (${capTotal(S.caps[ai])} pts)<br>`+
+    `${S.ply} moves played</div>`;
+  buzz(res.draw?40:(res.winner===human?[0,35,70,35,70,70]:[0,120]));
   updatePanels();
+  setTimeout(()=>$('ovEnd').classList.add('open'),700);
 }
 
 /* ---------- input ---------- */
@@ -1096,47 +1244,62 @@ $('board').addEventListener('click',e=>{
   const r=human==='e'?dr:15-dr, c=human==='e'?dc:7-dc;
   const q=at(S,r,c);
 
-  // a pyramid can be inspected any time: tap the enemy's, or tap yours twice
   if(q&&q.shape==='p'&&(q.side!==human||selected===q.id)){ showPyramid(q); return; }
   if(busy||over) return;
 
   if(selected!=null){
     const p=S.pieces[selected];
     if(legalDests(S,p).some(d=>d[0]===r&&d[1]===c)){
-      performMove({id:p.id,fr:p.r,fc:p.c,tr:r,tc:c}); return;
+      const mv={id:p.id,fr:p.r,fc:p.c,tr:r,tc:c};
+      if(previewDest&&previewDest[0]===r&&previewDest[1]===c){ performMove(mv); return; }
+      const caps=capsFor(p,r,c);
+      if(previewOn()&&caps.length){
+        previewDest=[r,c]; previewCaps=caps;
+        buzz(8);
+        const list=caps.map(x=>x.desc).join(' and ');
+        setStatus('This move takes '+list,
+          caps.map(x=>x.text).join(' · ')+' &nbsp;·&nbsp; tap again to confirm');
+        showSelection();
+        return;
+      }
+      performMove(mv); return;
     }
   }
-  if(q&&q.side===human){ selected=(selected===q.id)?null:q.id; hintMv=null; }
+  previewDest=null; previewCaps=null;
+  if(q&&q.side===human){ selected=(selected===q.id)?null:q.id; hintMv=null; buzz(6); }
   else selected=null;
   showSelection();
   setStatus('Your move',selectionNote());
 });
 
-/* ---------- hint, with a reason ---------- */
+/* ---------- hint ---------- */
 function hintReason(mv){
-  const before=sweep(S,ai);
+  const before=dangerSet();
   const S2=clone(S); const caps=applyMove(S2,mv);
-  if(caps.length){
-    const c=caps[0];
-    return `Takes their ${c.desc} ${c.text}.`;
-  }
+  if(caps.length) return `Takes their ${caps[0].desc} ${caps[0].text}.`;
   const t=findTriumph(S2,human);
   if(t) return `Completes a ${t.type} triumph: ${t.vals.join(', ')}.`;
-  const wasHit=before.some(c=>c.tid===mv.id);
-  const after=sweep(S2,ai);
-  const stillHit=after.some(c=>c.tid===mv.id);
-  const p=S.pieces[mv.id];
-  if(wasHit&&!stillHit) return `Rescues your ${SHAPE_NAME[p.shape]} ${p.v} from capture.`;
-  if(after.length<before.length) return 'Breaks up a threat hanging over your position.';
+  if(before.has(mv.id)){
+    const after=new Set();
+    for(const m2 of genMoves(S2,ai)){
+      const S3=clone(S2);
+      for(const c of applyMove(S3,m2)) after.add(c.tid);
+    }
+    if(!after.has(mv.id)){
+      const p=S.pieces[mv.id];
+      return `Rescues your ${SHAPE_NAME[p.shape]} ${p.v} from capture.`;
+    }
+  }
   if(inTerr(human,mv.tr)&&!inTerr(human,mv.fr)) return 'Crosses into enemy ground, where triumphs must be built.';
   if(pairBonus(S2,human)>pairBonus(S,human)) return 'Lines up two values that could grow into a progression.';
   return 'Safe development — keeps your options open.';
 }
 $('btnHint').onclick=()=>{
   if(busy||over||S.turn!==human) return;
-  setStatus('Thinking…','','think');
+  setStatus('Thinking…','');
   setTimeout(()=>{
     hintMv=chooseMove(S,human,'scholar'); selected=null;
+    previewDest=null; previewCaps=null;
     if(hintMv){
       const p=S.pieces[hintMv.id];
       setStatus(`Try ${SHAPE_NAME[p.shape]} ${p.v} → ${coord(hintMv.tr,hintMv.tc)}`,hintReason(hintMv));
@@ -1148,20 +1311,32 @@ $('btnUndo').onclick=()=>{
   if(busy&&!over) return;
   if(!undoStack.length) return;
   S=undoStack.pop(); over=false; busy=false; selected=null; hintMv=null;
+  previewDest=null; previewCaps=null; dangerCache=null;
   lastFrom=null; lastTo=null;
+  $('ovEnd').classList.remove('open');
   rebuild(); log('— undo —');
   startTurn();
 };
-$('btnLog').onclick=()=>{
-  const l=$('logPanel'); l.style.display = l.style.display==='none' ? 'block' : 'none';
-};
 $('btnRules').onclick=()=>$('ovRules').classList.add('open');
 $('btnMenu').onclick=()=>$('ovMenu').classList.add('open');
+$('endClose').onclick=()=>$('ovEnd').classList.remove('open');
+$('endNew').onclick=()=>{ $('ovEnd').classList.remove('open'); newGame(); };
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
-  if(e.target===o&&o.id!=='ovLesson') o.classList.remove('open');
+  if(e.target===o&&o.id!=='ovLesson'&&o.id!=='ovEnd') o.classList.remove('open');
 }));
-document.querySelectorAll('.seg').forEach(seg=>{
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  const isLog=t.dataset.tab==='log';
+  $('tabBar').classList.toggle('right',isLog);
+  $('paneSet').classList.toggle('on',!isLog);
+  $('paneLog').classList.toggle('on',isLog);
+});
+
+/* ---------- settings ---------- */
+document.querySelectorAll('.seg[data-set]').forEach(seg=>{
   seg.querySelectorAll('div').forEach(d=>d.onclick=()=>{
     seg.querySelectorAll('div').forEach(x=>x.classList.remove('on'));
     d.classList.add('on');
@@ -1170,19 +1345,43 @@ document.querySelectorAll('.seg').forEach(seg=>{
     if(k==='mode') mode=v;
     if(k==='level') level=v;
     if(k==='speed') speed=v;
-    if(k==='danger'){ dangerOn=(v==='on'); showSelection(); }
-    if(k==='learn'){ learnOn=(v==='on'); if(learnOn) learnMuted.clear(); }
+    if(k==='haptics') hapticsOn=(v==='on');
+    if(k==='danger'){ dangerOn=(v==='on'); if(dangerOn&&!busy&&!over) dangerSet(); showSelection(); }
     if(k==='coords'){ coordsOn=(v==='on'); buildCoords(); }
-    vcDesc();
+    if(k==='aids'){ aids=v; learnMuted.clear(); showSelection(); }
+    descs();
   });
 });
-function vcDesc(){
+function descs(){
   $('vcDescTxt').textContent = mode==='skirmish'
     ? 'Skirmish — 5 captures, 150 points, or a triumph'
     : mode==='standard' ? 'Standard — 8 captures, or a triumph'
     : 'Full — triumph only, as the philosophers played it';
+  $('aidDesc').innerHTML = aids==='both'
+    ? 'Marks moves that capture, previews what falls before you commit, and explains the arithmetic afterwards.<div class="desc">Best while you are learning the four capture types.</div>'
+    : aids==='preview'
+      ? 'Marks moves that capture and previews what falls before you commit. No explanations.<div class="desc">For when you know the rules but still want to see the consequence.</div>'
+      : 'No marks, no preview, no explanations.<div class="desc">Captures simply happen, as at a real board.</div>';
+  if(S&&!busy&&!over) updatePanels();   // descs() also runs before the first game exists
 }
 $('btnNew').onclick=()=>{ $('ovMenu').classList.remove('open'); newGame(); };
+
+/* ---------- viewport ---------- */
+let rzTimer=null;
+function relayout(){
+  const old=CELL; readCell();
+  if(Math.abs(old-CELL)<0.5||!S) return;
+  for(const [id,w] of els){ w.style.transition='none'; place(w,S.pieces[id]); }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    for(const w of els.values()) w.style.transition='';
+  }));
+  buildCoords(); showSelection(); updatePanels();
+}
+window.addEventListener('resize',()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(relayout,120); });
+window.addEventListener('orientationchange',()=>setTimeout(relayout,320));
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
 
 /* ================= SELF-TEST (open with ?test) ================= */
 function runSelfTest(){
@@ -1205,12 +1404,11 @@ function runSelfTest(){
     const al=s=>St.pieces.filter(p=>p.alive&&p.side===s);
     const sum=s=>al(s).reduce((a,p)=>a+p.v,0);
     ok('24 pieces per side', al('e').length===24&&al('o').length===24);
-    ok('Even army totals 1312', sum('e')===1312, String(sum('e')));
-    ok('Odd army totals 1752', sum('o')===1752, String(sum('o')));
-    const pe=St.pieces.find(p=>p.shape==='p'&&p.side==='e');
-    const po=St.pieces.find(p=>p.shape==='p'&&p.side==='o');
-    ok('Light pyramid = 91', pe.v===91); ok('Dark pyramid = 190', po.v===190);
-    ok('Odds move first', St.turn==='o');
+    ok('Light army totals 1312', sum('e')===1312, String(sum('e')));
+    ok('Dark army totals 1752', sum('o')===1752, String(sum('o')));
+    ok('Light pyramid = 91', St.pieces.find(p=>p.shape==='p'&&p.side==='e').v===91);
+    ok('Dark pyramid = 190', St.pieces.find(p=>p.shape==='p'&&p.side==='o').v===190);
+    ok('Dark moves first', St.turn==='o');
     let mirror=true;
     for(let r=0;r<4;r++) for(let c=0;c<8;c++){
       const a=at(St,r,c), b=at(St,15-r,c);
@@ -1218,9 +1416,9 @@ function runSelfTest(){
     }
     ok('Armies are mirror images', mirror);
   }
-  ok('Coordinate A1 is the Even corner', coord(15,0)==='A1', coord(15,0));
-  ok('Coordinate H16 is the Odd corner', coord(0,7)==='H16', coord(0,7));
-  ok('Jaron’s example: triangle 72 lands on B5', coord(11,1)==='B5', coord(11,1));
+  ok('Coordinate A1 is the light corner', coord(15,0)==='A1', coord(15,0));
+  ok('Coordinate H16 is the dark corner', coord(0,7)==='H16', coord(0,7));
+  ok('Triangle 72 two up lands on B5', coord(11,1)==='B5', coord(11,1));
 
   { const St=tState([P('e','c',4,8,4),P('e','t',20,10,4),P('e','s',45,12,4)]);
     const d=i=>legalDests(St,St.pieces[i]).map(x=>x.join(','));
@@ -1231,11 +1429,10 @@ function runSelfTest(){
       return Math.abs(r-12)+Math.abs(c-4)===3;}));
     ok('No diagonal moves', !d(0).includes('7,3'));
   }
-  ok('Square cannot jump a blocker',
-    !legalDests(tState([P('e','s',45,8,0),P('o','c',3,9,0)]),
-      tState([P('e','s',45,8,0),P('o','c',3,9,0)]).pieces[0]).some(x=>x[0]===11));
-  ok('Cannot move off the board',
-    legalDests(tState([P('e','s',45,0,0)]),tState([P('e','s',45,0,0)]).pieces[0]).length===2);
+  { const St=tState([P('e','s',45,8,0),P('o','c',3,9,0)]);
+    ok('Square cannot jump a blocker', !legalDests(St,St.pieces[0]).some(x=>x[0]===11)); }
+  { const St=tState([P('e','s',45,0,0)]);
+    ok('Cannot move off the board', legalDests(St,St.pieces[0]).length===2); }
 
   ok('Encounter: 25 takes 25', took(tState([P('e','t',25,5,3),P('o','s',25,5,5)]),'e',25));
   ok('Encounter needs a clear path',
@@ -1266,24 +1463,19 @@ function runSelfTest(){
     applyCaps(St,caps,'e');
     ok('Pyramid total drops to 174', pyr.v===174&&pyr.alive, String(pyr.v));
     ok('Pyramid loses the 1-step move with its circle', !distances(pyr).includes(1));
-    ok('Captured component is recorded as a circle',
+    ok('Captured component recorded with its shape',
        St.caps.e.length===1&&St.caps.e[0].shape==='c'&&St.caps.e[0].v===16);
-    ok('Pyramid attacks with a component value',
-       took(tState([P('e','p',0,5,3),P('o','c',36,5,5)]),'e',36));
-    // inspector data: the lost component must still be listed, marked gone
     ok('Inspector still lists the taken component',
        PYR.o.length===5 && !stillIn(pyr,16) && stillIn(pyr,64));
     ok('Board glyph loses a step per component', stepsOf(pyr)===4, String(stepsOf(pyr)));
-    ok('Component values are unique, so the diff is unambiguous',
-       new Set(PYR.e.map(x=>x.v)).size===6 && new Set(PYR.o.map(x=>x.v)).size===5);
+    ok('Pyramid attacks with a component value',
+       took(tState([P('e','p',0,5,3),P('o','c',36,5,5)]),'e',36));
   }
-  { // lesson metadata must be complete for every capture kind
-    const cases=[
+  { const cases=[
       tState([P('e','t',25,5,3),P('o','s',25,5,5)]),
       tState([P('e','c',6,5,2),P('e','t',6,3,3),P('o','c',12,5,3)]),
       tState([P('e','c',8,5,0),P('o','s',32,5,5)]),
-      tState([P('o','c',3,0,0),P('e','c',2,1,0),P('e','c',4,0,1)])
-    ];
+      tState([P('o','c',3,0,0),P('e','c',2,1,0),P('e','c',4,0,1)])];
     let good=true, seen=[];
     for(const St of cases) for(const c of sweep(St,'e')){
       seen.push(c.kind);
@@ -1304,7 +1496,16 @@ function runSelfTest(){
   ok('Out-of-line rejected',!tri([2,4,6],[[2,0],[3,2],[2,4]]));
   ok('Scrambled order rejected',!tri([4,2,6],[[2,0],[2,2],[2,4]]));
   ok('Own half does not count',!tri([2,4,6],[[10,0],[10,2],[10,4]]));
-  ok('Odds triumph in rows 8-15',!!tri([3,5,7],[[10,0],[10,2],[10,4]],'o'));
+  ok('Dark triumphs in rows 8-15',!!tri([3,5,7],[[10,0],[10,2],[10,4]],'o'));
+
+  /* progress readouts */
+  { const St=mkState();
+    St.caps.e=[{v:40,shape:'c'},{v:60,shape:'s'}];
+    const n=St.caps.e.length, v=capTotal(St.caps.e);
+    ok('Capture total sums values', v===100, String(v));
+    ok('Standard progress reads n/8', `${n}/8 pcs`==='2/8 pcs');
+    ok('Skirmish prefers the nearer line', (v/150>=n/5), `${(v/150).toFixed(2)} vs ${(n/5).toFixed(2)}`);
+  }
 
   { let crashes=0,bad=0,plies=0,games=0,wins={triumph:0,captures:0,blocked:0,draw:0};
     for(let g=0;g<120;g++){
@@ -1341,8 +1542,21 @@ function runSelfTest(){
     }
     ok('AI returns legal moves at every level',legalAll);
     const t0=performance.now(); chooseMove(St,'o','philosopher');
-    ok('Hardest AI thinks in under 2.5s',(performance.now()-t0)<2500,
-       (performance.now()-t0).toFixed(0)+'ms');
+    const ms=performance.now()-t0;
+    ok('Hardest AI thinks in under 2.5s',ms<2500,ms.toFixed(0)+'ms');
+
+    /* danger set: must find threats the old sweep-based version missed */
+    const t1=performance.now();
+    const threatened=new Set();
+    for(const mv of genMoves(St,'o')){
+      const S2=clone(St);
+      for(const c of applyMove(S2,mv)) threatened.add(c.tid);
+    }
+    const ms2=performance.now()-t1;
+    ok('Danger scan completes quickly',ms2<1200,ms2.toFixed(0)+'ms');
+    ok('Opening sweep really is empty (why the old rings never showed)',
+       sweep(St,'o').length===0);
+
     const S2=tState([P('o','c',9,5,4),P('e','t',9,5,6),P('e','c',2,12,0),P('o','c',3,15,7)]);
     S2.turn='e';
     const S3=clone(S2); applyMove(S3,chooseMove(S3,'e','scholar'));
@@ -1350,25 +1564,27 @@ function runSelfTest(){
   }
 
   document.querySelector('.app').innerHTML=
-    `<div class="hdr"><div><h1>SELF-TEST</h1>
-     <div class="sub">${pass} PASSED · ${fail} FAILED</div></div></div>`+
+    `<div class="hdr"><h1>SELF-TEST</h1></div>`+
     `<div class="panel" style="padding:10px 12px;font-size:11px;line-height:1.85">`+
+    `<div style="color:var(--gold);padding-bottom:6px">${pass} PASSED · ${fail} FAILED</div>`+
     results.map(r=>r.info
       ? `<div style="color:var(--ui-dim);padding-top:6px">${r.info}</div>`
       : `<div style="color:${r.cond?'var(--good)':'var(--alert)'}">${r.cond?'✔':'✘'} ${r.name}`+
         (r.extra?` <span style="color:var(--ui-dim)">— ${r.extra}</span>`:'')+`</div>`).join('')+
-    `</div><div class="bar"><a class="btn gold" href="?" style="text-decoration:none;display:block">`+
+    `</div><div style="display:flex"><a class="btn gold" href="?" style="text-decoration:none">`+
     `<span>BACK TO THE GAME</span></a></div>`;
 }
 
 /* ---------- new game ---------- */
 function newGame(){
   S=mkState(); over=false; busy=false; selected=null; hintMv=null;
-  undoStack=[]; lastFrom=null; lastTo=null;
+  undoStack=[]; lastFrom=null; lastTo=null; lastResult=null;
+  previewDest=null; previewCaps=null; dangerCache=null;
   learnMuted.clear();
   $('logPanel').innerHTML='';
+  $('ovEnd').classList.remove('open');
   rebuild();
-  log(`— New game · you are ${sideName(human)} · ${mode} · ${level} —`);
+  log(`— New game · you are ${human==='e'?'Light':'Dark'} · ${mode} · ${level} —`);
   startTurn();
 }
 const _perform=performMove;
@@ -1376,27 +1592,20 @@ performMove=async function(mv){
   if(S.turn===human){ undoStack.push(clone(S)); if(undoStack.length>40) undoStack.shift(); }
   return _perform(mv);
 };
-/* ---------- keep the board in step with the viewport ---------- */
-let rzTimer=null;
-function relayout(){
-  const old=CELL; readCell();
-  if(Math.abs(old-CELL)<0.5||!S) return;
-  for(const [id,w] of els){ w.style.transition='none'; place(w,S.pieces[id]); }
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    for(const w of els.values()) w.style.transition='';
-  }));
-  buildCoords(); showSelection();
+/* If start-up ever throws again, say so on screen instead of showing a bare
+   board — an empty board with no explanation cost us a round trip once. */
+try{
+  descs();
+  if(location.search.includes('test')) runSelfTest(); else newGame();
+}catch(err){
+  const line=(err&&err.stack||'').split('\n')[1]||'';
+  document.querySelector('.app').insertAdjacentHTML('afterbegin',
+    `<div class="panel" style="padding:12px 13px;color:var(--alert);font-size:11px;line-height:1.65">
+       <b>Startup error</b><br>${String((err&&err.message)||err)}
+       <div style="color:var(--ui-dim);font-size:10px;margin-top:4px">${line.trim()}</div>
+     </div>`);
+  throw err;
 }
-window.addEventListener('resize',()=>{ clearTimeout(rzTimer); rzTimer=setTimeout(relayout,120); });
-window.addEventListener('orientationchange',()=>setTimeout(relayout,320));
-
-/* ---------- offline support (ignored when opened from a file) ---------- */
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
-
-vcDesc();
-if(location.search.includes('test')) runSelfTest(); else newGame();
 </script>
 </body>
 </html>

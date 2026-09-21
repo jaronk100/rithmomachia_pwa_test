@@ -5,7 +5,7 @@
    Bump CACHE whenever you change index.html, or the phone will keep serving
    the old copy. That is the single most common PWA gotcha. */
 
-const CACHE = 'rithmomachia-v1';
+const CACHE = 'rithmomachia-v3';
 
 const ASSETS = [
   './',
