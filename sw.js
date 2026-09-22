@@ -1,11 +1,20 @@
 /* Rithmomachia — service worker.
-   The whole game is one HTML file, so caching is simple: grab everything on
-   install, then serve from cache and quietly refresh in the background.
 
-   Bump CACHE whenever you change index.html, or the phone will keep serving
-   the old copy. That is the single most common PWA gotcha. */
+   Strategy, and why:
+   - NAVIGATION (the page itself) is network-first. This is the important bit.
+     A cache-first page will keep showing a stale build until the cache name
+     changes AND the worker activates AND you relaunch — which is exactly the
+     "I committed but my phone looks the same" trap. Network-first means the
+     newest HTML wins whenever there's a signal, and the cached copy is only
+     used when there genuinely isn't one.
+   - EVERYTHING ELSE is cache-first, which keeps launches instant.
+   - On install we refetch with cache:'reload' so the browser's own HTTP cache
+     can't hand us the stale file we're trying to replace. GitHub Pages sends
+     max-age=600, so without this the new worker can cache a ten-minute-old copy.
 
-const CACHE = 'rithmomachia-v3';
+   Bump CACHE on every deploy. */
+
+const CACHE = 'rithmomachia-v5';
 
 const ASSETS = [
   './',
@@ -18,9 +27,10 @@ self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(c =>
-      // addAll fails the whole install if any single file 404s, so add
-      // them individually and tolerate the optional ones being absent
-      Promise.all(ASSETS.map(u => c.add(u).catch(() => {})))
+      Promise.all(ASSETS.map(u =>
+        // bypass the HTTP cache so we store what's actually on the server now
+        c.add(new Request(u, { cache: 'reload' })).catch(() => {})
+      ))
     )
   );
 });
@@ -36,6 +46,25 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
+  const isPage = e.request.mode === 'navigate';
+
+  if (isPage) {
+    // network first, fall back to cache when offline
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
+          return res;
+        })
+        .catch(() =>
+          caches.match(e.request).then(hit => hit || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // everything else: cache first, refresh quietly in the background
   e.respondWith(
     caches.match(e.request).then(hit => {
       const live = fetch(e.request)
@@ -46,9 +75,8 @@ self.addEventListener('fetch', e => {
           }
           return res;
         })
-        .catch(() => hit);          // offline: fall back to whatever we have
-
-      return hit || live;           // cache first, network fills in behind
+        .catch(() => hit);
+      return hit || live;
     })
   );
 });

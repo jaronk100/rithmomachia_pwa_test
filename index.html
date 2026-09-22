@@ -59,15 +59,21 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px}
 .hdr h1{margin:0;font-size:13.5px;letter-spacing:3px;color:var(--gold);font-weight:normal;
   white-space:nowrap}
-.icons{display:flex;gap:5px}
+.icons{display:flex;align-items:center;gap:5px}
 .icon{width:32px;height:32px;border-radius:8px;position:relative;overflow:hidden;cursor:pointer;
   background:linear-gradient(150deg,var(--panel-hi),var(--panel-lo));
   border:1px solid var(--panel-edge);display:flex;align-items:center;justify-content:center;
   font-size:13px;color:var(--ui-dim);flex:none}
 .icon:active{border-color:var(--gold);color:var(--gold)}
 .icon svg{width:17px;height:17px}
-.icon.off{opacity:.33}
-.icon.lit{border-color:var(--good);color:var(--good)}
+/* in-play tools sit together; the menu is a different kind of thing, so it is
+   set apart by a gap and given a different shape and weight */
+.tools{display:flex;gap:4px;padding:3px;border-radius:11px;
+  background:rgba(255,235,200,.045);border:1px solid rgba(255,235,200,.07)}
+.tools .icon{background:none;border-color:transparent}
+.tools .icon:active{background:rgba(226,180,92,.12)}
+.icon.menu{margin-left:9px;border-radius:50%;width:34px;height:34px;
+  border-color:rgba(255,235,200,.28);color:var(--ui-text);font-size:14px}
 
 .panel{position:relative;overflow:hidden;border-radius:9px;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
@@ -158,6 +164,10 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 
 .pc.tiny{width:20px;height:20px;font-size:8.5px;flex:none}
 .pc.tiny.d3{font-size:6.5px}
+/* dark chips sit on a dark panel, so give them a faint light rim to separate */
+.pc.tiny.dk{box-shadow:0 0 0 1px rgba(255,236,205,.26),0 1px 2px rgba(0,0,0,.55)}
+.pc.t.tiny.dk{filter:drop-shadow(0 0 1px rgba(255,236,205,.5));box-shadow:none}
+.pc.t.tiny.dk .tri{filter:drop-shadow(0 0 1.2px rgba(255,236,205,.55))}
 .pc.t.tiny{font-size:7.5px;padding-bottom:1px}
 .pc.t.tiny.d3{font-size:6px}
 .pc.p.tiny .steps{display:none}
@@ -179,11 +189,11 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   box-shadow:0 0 6px rgba(255,232,184,.45),inset 0 1px 1px rgba(0,0,0,.3)}
 .markers .hot{width:calc(var(--cell)*.34);height:calc(var(--cell)*.34);border-radius:50%;
   background:rgba(220,109,76,.72);box-shadow:0 0 9px rgba(220,109,76,.65)}
+/* dashed = your piece is in danger; solid = their piece you can take */
 .markers .cap{position:absolute;inset:1px;border-radius:50%;border:2px dashed var(--alert);
   box-shadow:0 0 9px rgba(220,109,76,.5)}
-.markers .doom{position:absolute;inset:1px;border-radius:50%;border:2px solid var(--alert);
-  box-shadow:0 0 12px rgba(220,109,76,.75);animation:dm .8s infinite alternate}
-@keyframes dm{from{opacity:.55}to{opacity:1}}
+.markers .prey{position:absolute;inset:1px;border-radius:50%;border:2px solid var(--alert);
+  box-shadow:0 0 11px rgba(220,109,76,.6)}
 .markers .from{position:absolute;inset:4px;border-radius:6px;border:1.5px dashed rgba(255,238,200,.5)}
 .markers .to{position:absolute;inset:2px;border-radius:8px;border:1.5px solid rgba(255,238,200,.42)}
 .markers .go{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--alert);
@@ -197,11 +207,22 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   animation:fl .34s ease-out}
 @keyframes fl{from{opacity:.95;transform:scale(.6)}to{opacity:0;transform:scale(1.5)}}
 
-.status{padding:6px 11px;display:flex;align-items:center;min-height:42px}
+.status{padding:6px 11px;display:flex;align-items:center;min-height:42px;
+  transition:border-color .3s ease,box-shadow .3s ease}
 .status .main{font-size:12.5px;letter-spacing:.5px}
 .status .note{font-size:10px;color:var(--ui-dim);margin-top:2px;letter-spacing:.3px;line-height:1.45}
 .status.alert{border-color:rgba(220,109,76,.5)}
 .status.alert .main{color:var(--alert)}
+/* after a hint, draw the eye to where the answer appeared */
+.status.hinted{border-color:var(--good);animation:hp 1.5s ease-in-out 3}
+.status.hinted .main{color:var(--good)}
+@keyframes hp{0%,100%{box-shadow:0 0 0 0 rgba(143,191,106,0)}
+              50%{box-shadow:0 0 0 3px rgba(143,191,106,.22)}}
+/* once the game is over and the modal is dismissed, this becomes the way out */
+.status.asbutton{cursor:pointer;justify-content:center;text-align:center;
+  border-color:var(--gold);background:linear-gradient(155deg,#3a2a17,#241809)}
+.status.asbutton .main{color:var(--gold);letter-spacing:1.6px;font-size:12px}
+.status.asbutton:active{background:linear-gradient(155deg,#4a361d,#2d1f0c)}
 
 .btn{flex:1;position:relative;overflow:hidden;border-radius:9px;cursor:pointer;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
@@ -210,15 +231,17 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .btn:active{border-color:var(--gold);color:var(--gold)}
 .btn.gold{border-color:var(--gold);color:var(--gold)}
 
-.log{max-height:300px;overflow-y:auto;padding:10px 14px;font-size:10.5px;line-height:1.75;
+.log{overflow-y:auto;padding:10px 14px;font-size:10.5px;line-height:1.75;
   color:var(--ui-dim);letter-spacing:.2px}
 .log div{white-space:pre-wrap}
 .log .you{color:#e8dcc2}
 .log .took{color:var(--alert)}
 .log .win{color:var(--good)}
 
+/* extra room at the bottom so the last button clears the gesture bar */
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(8,6,4,.86);
-  display:none;justify-content:center;align-items:flex-start;padding:20px 14px;overflow-y:auto}
+  display:none;justify-content:center;align-items:flex-start;overflow-y:auto;
+  padding:20px 14px calc(42px + env(safe-area-inset-bottom))}
 .overlay.open{display:flex}
 .sheet{width:352px;max-width:100%;position:relative;overflow:hidden;border-radius:11px;
   background:linear-gradient(155deg,var(--panel-hi),var(--panel-lo));
@@ -231,13 +254,11 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 
 /* tabs */
 .tabs{position:relative;display:flex;border-bottom:1px solid rgba(255,225,180,.09)}
-.tab{flex:1;text-align:center;padding:12px 0 11px;font-size:10px;letter-spacing:2px;
-  color:#6d6250;cursor:pointer;transition:color .22s ease}
+.tab{flex:1;text-align:center;padding:12px 2px 11px;font-size:9px;letter-spacing:1.3px;
+  color:#6d6250;cursor:pointer;transition:color .22s ease;white-space:nowrap}
 .tab.on{color:var(--ui-text)}
-.tabbar{position:absolute;bottom:-1px;left:0;width:50%;height:2px;border-radius:2px;
-  background:#f0e3ca;box-shadow:0 0 8px rgba(240,227,202,.45);
-  transition:transform .26s cubic-bezier(.4,0,.2,1)}
-.tabbar.right{transform:translateX(100%)}
+.tabbar{position:absolute;bottom:-1px;left:0;width:33.3333%;height:2px;border-radius:2px;
+  background:var(--gold);transition:transform .26s cubic-bezier(.4,0,.2,1)}
 .tabpane{display:none}
 .tabpane.on{display:block}
 
@@ -310,22 +331,23 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   <div class="hdr">
     <h1>RITHMOMACHIA</h1>
     <div class="icons">
-      <div class="icon" id="btnHint" title="Hint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9.5 18.5h5M10.5 21.5h3"/>
-          <path d="M12 2.5a6.2 6.2 0 0 0-3.6 11.3c.6.4 1 1.1 1 1.9v.8h5.2v-.8c0-.8.4-1.5 1-1.9A6.2 6.2 0 0 0 12 2.5z"/>
-        </svg>
+      <div class="tools">
+        <div class="icon" id="btnHint" title="Hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.5 18.5h5M10.5 21.5h3"/>
+            <path d="M12 2.5a6.2 6.2 0 0 0-3.6 11.3c.6.4 1 1.1 1 1.9v.8h5.2v-.8c0-.8.4-1.5 1-1.9A6.2 6.2 0 0 0 12 2.5z"/>
+          </svg>
+        </div>
+        <div class="icon" id="btnUndo" title="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 8.5h9.5a5.5 5.5 0 1 1 0 11H8"/>
+            <path d="M4.5 8.5 8.5 4.5M4.5 8.5l4 4"/>
+          </svg>
+        </div>
       </div>
-      <div class="icon" id="btnUndo" title="Undo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-             stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4.5 8.5h9.5a5.5 5.5 0 1 1 0 11H8"/>
-          <path d="M4.5 8.5 8.5 4.5M4.5 8.5l4 4"/>
-        </svg>
-      </div>
-      <div class="icon" id="btnRules" title="How to play"><span>?</span></div>
-      <div class="icon" id="btnMenu" title="Menu"><span>☰</span></div>
+      <div class="icon menu" id="btnMenu" title="Menu"><span>☰</span></div>
     </div>
   </div>
 
@@ -422,6 +444,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
     <h2>MENU <b data-close="ovMenu">✕</b></h2>
     <div class="tabs">
       <div class="tab on" data-tab="set">SETTINGS</div>
+      <div class="tab" data-tab="rules">HOW TO PLAY</div>
       <div class="tab" data-tab="log">GAME LOG</div>
       <div class="tabbar" id="tabBar"></div>
     </div>
@@ -450,50 +473,46 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
       <div class="seg" data-set="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
       <div class="row"><div class="lbl">Move speed</div></div>
       <div class="seg" data-set="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
-      <div style="padding:12px 14px 15px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+      <div style="padding:14px 14px 22px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+    </div>
+
+    <div class="tabpane" id="paneRules">
+      <div class="rules">
+        <h3>THE IDEA</h3>
+        <p>Two armies of numbered pieces. You don't capture by landing on a piece — you capture by <b>proving an arithmetical relationship</b> to it. You win by getting three pieces into enemy territory whose numbers form a progression.</p>
+        <h3>MOVEMENT</h3>
+        <p>Straight lines only. Never diagonally, never jumping, and the distance is <b>exact</b>.</p>
+        <ul>
+          <li><b>Circle</b> — exactly 1 square</li>
+          <li><b>Triangle</b> — exactly 2 squares</li>
+          <li><b>Square</b> — exactly 3 squares</li>
+          <li><b>Pyramid</b> (gold rim) — 1, 2 or 3; it may move as any shape it still contains</li>
+        </ul>
+        <h3>A TURN</h3>
+        <p>Move one piece. Then <b>every capture your position now makes happens automatically</b>. Your piece never moves onto the captured square — the enemy piece simply leaves the board, for good.</p>
+        <h3>THE FOUR CAPTURES</h3>
+        <p><b>Encounter</b> — you could reach an enemy of the same value.<br><span class="ex">your 25 can reach their 25</span></p>
+        <p><b>Ambush</b> — two of your pieces could reach the same enemy, and their values add or subtract to it.<br><span class="ex">your 6 and 6 both reach their 12</span></p>
+        <p><b>Assault</b> — you and an enemy share a row or column with only empty squares between. Count them (<i>n</i>). Capture if your value × <i>n</i>, or your value ÷ <i>n</i>, equals theirs.<br><span class="ex">your 8, four empty squares from their 32</span></p>
+        <p><b>Siege</b> — an enemy piece has no legal move left and at least one blocker is yours. Board edges count as walls.</p>
+        <h3>THE PYRAMIDS</h3>
+        <p>A pyramid is a <b>stack of separate pieces</b>. The light one is squares 36 and 25, triangles 16 and 9, circles 4 and 1 — total <b>91</b>. The dark one is squares 64 and 49, triangles 36 and 25, circle 16 — total <b>190</b>. Each component grants a move distance, so a pyramid that loses its circles can no longer step one square.</p>
+        <p><b>Tap any pyramid to see inside it</b> — your own needs a second tap, since the first one selects it.</p>
+        <h3>WINNING</h3>
+        <p>Get <b>three pieces into the enemy half</b>, in a straight line, evenly spaced, values rising or falling in a progression:</p>
+        <ul>
+          <li><b>Arithmetic</b> — equal gaps &nbsp;<span class="ex">2, 4, 6</span></li>
+          <li><b>Geometric</b> — equal ratios &nbsp;<span class="ex">2, 4, 8</span></li>
+          <li><b>Harmonic</b> — a : c = (b−a) : (c−b) &nbsp;<span class="ex">9, 15, 45</span></li>
+        </ul>
+        <p>Capturing enough pieces also wins, depending on the setting. And if you ever have <b>no legal move</b>, you lose.</p>
+        <h3>LIGHT AND DARK</h3>
+        <p>The sources call these armies <i>Evens</i> and <i>Odds</i>, after the numbers each is built from — the first four evens (2, 4, 6, 8) or odds (3, 5, 7, 9). Only the circles keep that parity; the triangles and squares scramble it. Dark's pieces are worth more in total, which is less of an advantage than it sounds: it means your rival scores faster off them. Dark moves first to compensate for Light's more flexible small numbers.</p>
+      </div>
     </div>
 
     <div class="tabpane" id="paneLog">
       <div class="log" id="logPanel"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== RULES ===== -->
-<div class="overlay" id="ovRules">
-  <div class="sheet">
-    <h2>HOW TO PLAY <b data-close="ovRules">✕</b></h2>
-    <div class="rules">
-      <h3>THE IDEA</h3>
-      <p>Two armies of numbered pieces. You don't capture by landing on a piece — you capture by <b>proving an arithmetical relationship</b> to it. You win by getting three pieces into enemy territory whose numbers form a progression.</p>
-      <h3>MOVEMENT</h3>
-      <p>Straight lines only. Never diagonally, never jumping, and the distance is <b>exact</b>.</p>
-      <ul>
-        <li><b>Circle</b> — exactly 1 square</li>
-        <li><b>Triangle</b> — exactly 2 squares</li>
-        <li><b>Square</b> — exactly 3 squares</li>
-        <li><b>Pyramid</b> (gold rim) — 1, 2 or 3; it may move as any shape it still contains</li>
-      </ul>
-      <h3>A TURN</h3>
-      <p>Move one piece. Then <b>every capture your position now makes happens automatically</b>. Your piece never moves onto the captured square — the enemy piece simply leaves the board, for good.</p>
-      <h3>THE FOUR CAPTURES</h3>
-      <p><b>Encounter</b> — you could reach an enemy of the same value.<br><span class="ex">your 25 can reach their 25</span></p>
-      <p><b>Ambush</b> — two of your pieces could reach the same enemy, and their values add or subtract to it.<br><span class="ex">your 6 and 6 both reach their 12</span></p>
-      <p><b>Assault</b> — you and an enemy share a row or column with only empty squares between. Count them (<i>n</i>). Capture if your value × <i>n</i>, or your value ÷ <i>n</i>, equals theirs.<br><span class="ex">your 8, four empty squares from their 32</span></p>
-      <p><b>Siege</b> — an enemy piece has no legal move left and at least one blocker is yours. Board edges count as walls.</p>
-      <h3>THE PYRAMIDS</h3>
-      <p>A pyramid is a <b>stack of separate pieces</b>. The light one is squares 36 and 25, triangles 16 and 9, circles 4 and 1 — total <b>91</b>. The dark one is squares 64 and 49, triangles 36 and 25, circle 16 — total <b>190</b>. Each component grants a move distance, so a pyramid that loses its circles can no longer step one square.</p>
-      <p><b>Tap any pyramid to see inside it</b> — your own needs a second tap, since the first one selects it.</p>
-      <h3>WINNING</h3>
-      <p>Get <b>three pieces into the enemy half</b>, in a straight line, evenly spaced, values rising or falling in a progression:</p>
-      <ul>
-        <li><b>Arithmetic</b> — equal gaps &nbsp;<span class="ex">2, 4, 6</span></li>
-        <li><b>Geometric</b> — equal ratios &nbsp;<span class="ex">2, 4, 8</span></li>
-        <li><b>Harmonic</b> — a : c = (b−a) : (c−b) &nbsp;<span class="ex">9, 15, 45</span></li>
-      </ul>
-      <p>Capturing enough pieces also wins, depending on the setting. And if you ever have <b>no legal move</b>, you lose.</p>
-      <h3>LIGHT AND DARK</h3>
-      <p>The sources call these armies <i>Evens</i> and <i>Odds</i>, after the numbers each is built from — the first four evens (2, 4, 6, 8) or odds (3, 5, 7, 9). Only the circles keep that parity; the triangles and squares scramble it. Dark's pieces are worth more in total, which is less of an advantage than it sounds: it means your rival scores faster off them. Dark moves first to compensate for Light's more flexible small numbers.</p>
     </div>
   </div>
 </div>
@@ -826,7 +845,7 @@ readCell();
 let S, human='e', ai='o', mode='standard', level='novice', speed='normal';
 let aids='both', dangerOn=true, coordsOn=true, hapticsOn=true;
 let busy=false, over=false, selected=null, hintMv=null, undoStack=[];
-let previewDest=null, previewCaps=null, dangerCache=null, lastResult=null;
+let dangerCache=null, lastResult=null, endSummary='';
 const els=new Map(), learnMuted=new Set();
 
 const $=id=>document.getElementById(id);
@@ -963,32 +982,34 @@ function capsFor(p,r,c){
   const S2=clone(S);
   return applyMove(S2,{id:p.id,fr:p.r,fc:p.c,tr:r,tc:c});
 }
+let selCaptureMoves=0;
 function showSelection(){
   clearMarks();
+  selCaptureMoves=0;
   if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
   if(lastTo) mark(lastTo[0],lastTo[1],'to');
 
-  if(previewDest){
-    mark(previewDest[0],previewDest[1],'go');
-    for(const c of previewCaps){
-      const T=S.pieces[c.tid];
-      if(T&&T.alive) mark(T.r,T.c,'doom');
-      const w=els.get(c.tid); if(w) w.classList.add('doomed');
-    }
-  }
-  if(dangerOn&&!over&&S.turn===human&&!previewDest&&dangerCache){
+  /* Danger rings only while nothing is selected — otherwise two similar-looking
+     ring markers compete on screen and neither reads clearly. */
+  if(dangerOn&&!over&&S.turn===human&&selected==null&&dangerCache){
     for(const id of dangerCache){
       const T=S.pieces[id]; if(T&&T.alive) mark(T.r,T.c,'cap');
     }
   }
   if(hintMv){ mark(hintMv.fr,hintMv.fc,'hint'); mark(hintMv.tr,hintMv.tc,'hint'); }
+
   if(selected!=null){
     const p=S.pieces[selected];
     mark(p.r,p.c,'sel');
+    const prey=new Set();
     for(const [r,c] of legalDests(S,p)){
-      if(previewDest&&previewDest[0]===r&&previewDest[1]===c) continue;
-      const hot=previewOn()&&capsFor(p,r,c).length>0;
-      mark(r,c,hot?'hot':'dot');
+      const caps = previewOn() ? capsFor(p,r,c) : [];
+      if(caps.length){ selCaptureMoves++; for(const cc of caps) prey.add(cc.tid); }
+      mark(r,c,caps.length?'hot':'dot');
+    }
+    // everything this piece could take, from any of those squares
+    for(const id of prey){
+      const T=S.pieces[id]; if(T&&T.alive) mark(T.r,T.c,'prey');
     }
   }
 }
@@ -1046,11 +1067,14 @@ function describe(p,mv,fromR,fromC){
 function selectionNote(){
   if(selected==null) return 'Tap one of your pieces';
   const p=S.pieces[selected];
+  let base;
   if(p.shape!=='p'){
     const d=DIST[p.shape];
-    return `${SHAPE_NAME[p.shape]} ${p.v} — moves exactly ${d} ${d===1?'square':'squares'}`;
-  }
-  return stackLine(p)+' &nbsp;·&nbsp; tap again to inspect';
+    base=`${SHAPE_NAME[p.shape]} ${p.v} — moves exactly ${d} ${d===1?'square':'squares'}`;
+  }else base=stackLine(p)+' &nbsp;·&nbsp; tap again to inspect';
+  if(selCaptureMoves) base+=` &nbsp;·&nbsp; <span style="color:var(--alert)">`+
+    `${selCaptureMoves} ${selCaptureMoves===1?'move captures':'moves capture'}</span>`;
+  return base;
 }
 
 /* ---------- capture lesson ---------- */
@@ -1116,7 +1140,8 @@ function showLesson(c,byHuman){
 /* ---------- turn loop ---------- */
 async function startTurn(){
   if(over) return;
-  hintMv=null; previewDest=null; previewCaps=null;
+  hintMv=null;
+  $('statusPanel').classList.remove('hinted','asbutton');
   const side=S.turn;
   if(S.quiet>=100){ endGame({draw:true}); return; }
   if(genMoves(S,side).length===0){ endGame({winner:other(side),how:'blocked'}); return; }
@@ -1137,8 +1162,8 @@ async function startTurn(){
   }
 }
 async function performMove(mv){
-  busy=true; selected=null; hintMv=null;
-  previewDest=null; previewCaps=null; dangerCache=null;
+  busy=true; selected=null; hintMv=null; dangerCache=null;
+  $('statusPanel').classList.remove('hinted');
   clearMarks();
   const p=S.pieces[mv.id];
   const side=p.side, fromR=p.r, fromC=p.c, byHuman=(side===human);
@@ -1148,7 +1173,7 @@ async function performMove(mv){
   lastFrom=[fromR,fromC]; lastTo=[mv.tr,mv.tc];
   const w=els.get(p.id);
   w.classList.add('lift');
-  buzz(10);
+  buzz(12);                       // a piece moving — no buzz on mere selection
   await sleep(110);
   place(w,p);
   setStatus(byHuman?'You moved':'Rival moved',desc);
@@ -1217,6 +1242,8 @@ function endGame(res){
       log(`— ${youWon?'Rival':'You'} had no legal move —`,'win');
     }
   }
+  endSummary = res.draw ? 'The game ended drawn'
+    : `${title} · tap to play again`;
   $('endKicker').textContent=kicker;
   $('endTitle').textContent=title;
   $('endTitle').className='endtitle '+cls;
@@ -1247,26 +1274,15 @@ $('board').addEventListener('click',e=>{
   if(q&&q.shape==='p'&&(q.side!==human||selected===q.id)){ showPyramid(q); return; }
   if(busy||over) return;
 
+  /* one tap to select, one tap to move — captures are no different */
   if(selected!=null){
     const p=S.pieces[selected];
     if(legalDests(S,p).some(d=>d[0]===r&&d[1]===c)){
-      const mv={id:p.id,fr:p.r,fc:p.c,tr:r,tc:c};
-      if(previewDest&&previewDest[0]===r&&previewDest[1]===c){ performMove(mv); return; }
-      const caps=capsFor(p,r,c);
-      if(previewOn()&&caps.length){
-        previewDest=[r,c]; previewCaps=caps;
-        buzz(8);
-        const list=caps.map(x=>x.desc).join(' and ');
-        setStatus('This move takes '+list,
-          caps.map(x=>x.text).join(' · ')+' &nbsp;·&nbsp; tap again to confirm');
-        showSelection();
-        return;
-      }
-      performMove(mv); return;
+      performMove({id:p.id,fr:p.r,fc:p.c,tr:r,tc:c}); return;
     }
   }
-  previewDest=null; previewCaps=null;
-  if(q&&q.side===human){ selected=(selected===q.id)?null:q.id; hintMv=null; buzz(6); }
+  $('statusPanel').classList.remove('hinted');
+  if(q&&q.side===human){ selected=(selected===q.id)?null:q.id; hintMv=null; }
   else selected=null;
   showSelection();
   setStatus('Your move',selectionNote());
@@ -1299,10 +1315,14 @@ $('btnHint').onclick=()=>{
   setStatus('Thinking…','');
   setTimeout(()=>{
     hintMv=chooseMove(S,human,'scholar'); selected=null;
-    previewDest=null; previewCaps=null;
     if(hintMv){
       const p=S.pieces[hintMv.id];
       setStatus(`Try ${SHAPE_NAME[p.shape]} ${p.v} → ${coord(hintMv.tr,hintMv.tc)}`,hintReason(hintMv));
+      // point the eye at the answer — it isn't obvious the button did anything
+      const sp=$('statusPanel');
+      sp.classList.remove('hinted');
+      void sp.offsetWidth;                 // restart the animation
+      sp.classList.add('hinted');
     }
     showSelection();
   },30);
@@ -1311,29 +1331,54 @@ $('btnUndo').onclick=()=>{
   if(busy&&!over) return;
   if(!undoStack.length) return;
   S=undoStack.pop(); over=false; busy=false; selected=null; hintMv=null;
-  previewDest=null; previewCaps=null; dangerCache=null;
-  lastFrom=null; lastTo=null;
+  dangerCache=null; lastFrom=null; lastTo=null;
   $('ovEnd').classList.remove('open');
+  $('statusPanel').classList.remove('asbutton','hinted');
   rebuild(); log('— undo —');
   startTurn();
 };
-$('btnRules').onclick=()=>$('ovRules').classList.add('open');
-$('btnMenu').onclick=()=>$('ovMenu').classList.add('open');
-$('endClose').onclick=()=>$('ovEnd').classList.remove('open');
+$('btnMenu').onclick=()=>{ $('ovMenu').classList.add('open'); syncPanes(); };
+/* dismissing the end modal must not strand the player — the status strip
+   becomes the way to start again */
+function armNewGameStrip(){
+  $('statusPanel').classList.add('asbutton');
+  $('stMain').textContent='NEW GAME';
+  $('stNote').textContent=endSummary;
+}
+$('endClose').onclick=()=>{ $('ovEnd').classList.remove('open'); armNewGameStrip(); };
 $('endNew').onclick=()=>{ $('ovEnd').classList.remove('open'); newGame(); };
+$('statusPanel').onclick=()=>{ if(over&&$('statusPanel').classList.contains('asbutton')) newGame(); };
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
   if(e.target===o&&o.id!=='ovLesson'&&o.id!=='ovEnd') o.classList.remove('open');
 }));
 
 /* ---------- tabs ---------- */
+const PANES={set:'paneSet',rules:'paneRules',log:'paneLog'};
+const TABS=['set','rules','log'];
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  const key=t.dataset.tab;
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
-  const isLog=t.dataset.tab==='log';
-  $('tabBar').classList.toggle('right',isLog);
-  $('paneSet').classList.toggle('on',!isLog);
-  $('paneLog').classList.toggle('on',isLog);
+  $('tabBar').style.transform=`translateX(${TABS.indexOf(key)*100}%)`;
+  for(const k of TABS) $(PANES[k]).classList.toggle('on',k===key);
 });
+/* keep the short panes as tall as Settings so the sheet doesn't jump about */
+function syncPanes(){
+  const set=$('paneSet');
+  let h;
+  if(set.classList.contains('on')) h=set.offsetHeight;
+  else{
+    set.style.cssText='display:block;position:absolute;visibility:hidden;left:-9999px;top:0';
+    h=set.offsetHeight;
+    set.style.cssText='';
+  }
+  if(h>0){
+    const log=$('logPanel');
+    log.style.minHeight=h+'px';
+    log.style.maxHeight=h+'px';   // same length as Settings, scrolls inside
+    $('paneRules').style.minHeight=h+'px';
+  }
+}
 
 /* ---------- settings ---------- */
 document.querySelectorAll('.seg[data-set]').forEach(seg=>{
@@ -1579,10 +1624,11 @@ function runSelfTest(){
 function newGame(){
   S=mkState(); over=false; busy=false; selected=null; hintMv=null;
   undoStack=[]; lastFrom=null; lastTo=null; lastResult=null;
-  previewDest=null; previewCaps=null; dangerCache=null;
+  dangerCache=null; endSummary='';
   learnMuted.clear();
   $('logPanel').innerHTML='';
   $('ovEnd').classList.remove('open');
+  $('statusPanel').classList.remove('asbutton','hinted');
   rebuild();
   log(`— New game · you are ${human==='e'?'Light':'Dark'} · ${mode} · ${level} —`);
   startTurn();
