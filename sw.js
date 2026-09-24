@@ -14,7 +14,7 @@
 
    Bump CACHE on every deploy. */
 
-const CACHE = 'rithmomachia-v5';
+const CACHE = 'rithmomachia-v9';
 
 const ASSETS = [
   './',

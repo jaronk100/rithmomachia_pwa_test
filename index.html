@@ -57,8 +57,12 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 
 /* ---------- header: title + every action ---------- */
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px}
+/* title + tagline stack inside the height the icons already occupy */
+.brand{line-height:1}
 .hdr h1{margin:0;font-size:13.5px;letter-spacing:3px;color:var(--gold);font-weight:normal;
-  white-space:nowrap}
+  white-space:nowrap;line-height:1}
+.hdr .sub{font-size:8.5px;letter-spacing:1.5px;color:var(--ui-dim);margin-top:4px;
+  white-space:nowrap;line-height:1}
 .icons{display:flex;align-items:center;gap:5px}
 .icon{width:32px;height:32px;border-radius:8px;position:relative;overflow:hidden;cursor:pointer;
   background:linear-gradient(150deg,var(--panel-hi),var(--panel-lo));
@@ -109,6 +113,11 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .sq.lastcol{border-right:none}
 .sq.lastrow{border-bottom:none}
 .sq.enemy::after{content:'';position:absolute;inset:0;background:var(--enemy-tint)}
+/* The suggested piece is shown by tinting its actual grid cell rather than
+   floating a marker over it. A background fills the padding box, so it lands
+   exactly inside the grid lines with no rounding drift, and it sits under the
+   piece so the numeral stays fully legible. */
+.sq.hintfrom{background:rgba(143,191,106,.36)}
 .midline{position:absolute;z-index:5;left:0;right:0;top:calc(var(--cell)*8);height:0;
   border-top:1px solid rgba(44,20,2,.7);box-shadow:0 2px 0 -1px rgba(255,228,186,.24)}
 .layer{position:absolute;inset:0;pointer-events:none}
@@ -133,24 +142,31 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   display:flex;align-items:center;justify-content:center;
   font-size:calc(var(--cell)*.325);line-height:1;letter-spacing:-.2px}
 .pc.d3{font-size:calc(var(--cell)*.25)}
-.pc.lt{color:var(--lt-ink);text-shadow:0 1px 0 rgba(255,246,218,.5)}
-.pc.dk{color:var(--dk-ink);text-shadow:0 1px 1px rgba(0,0,0,.9)}
+.pc.lt{color:var(--lt-ink)}
+.pc.dk{color:var(--dk-ink)}
+/* No outlines, no lit top edge — the drop shadow alone carries the relief. */
 .pc.c{border-radius:50%}
 .pc.c.lt{background:radial-gradient(circle at 34% 26%,#f9ecc8,var(--lt-face) 46%,var(--lt-face2));
-  border:1.5px solid var(--lt-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.45),inset 0 -1px 2px rgba(120,86,32,.32)}
-.pc.c.dk{background:radial-gradient(circle at 34% 26%,#4e3823,var(--dk-face) 44%,var(--dk-face2));
-  border:1.5px solid var(--dk-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.6)}
+  box-shadow:0 2px 3.5px rgba(0,0,0,.5)}
+.pc.c.dk{background:radial-gradient(circle at 34% 26%,#543d26,var(--dk-face) 44%,var(--dk-face2));
+  box-shadow:0 2px 3.5px rgba(0,0,0,.65)}
 .pc.s{border-radius:3px}
 .pc.s.lt{background:linear-gradient(150deg,#f6e5ba,var(--lt-face2));
-  border:1.5px solid var(--lt-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.45),inset 0 -1px 2px rgba(120,86,32,.28)}
-.pc.s.dk{background:linear-gradient(150deg,#42301e,var(--dk-face2));
-  border:1.5px solid var(--dk-edge);box-shadow:0 1.5px 2px rgba(0,0,0,.62),inset 0 -1px 2px rgba(0,0,0,.55)}
+  box-shadow:0 2px 3.5px rgba(0,0,0,.5)}
+.pc.s.dk{background:linear-gradient(150deg,#48341f,var(--dk-face2));
+  box-shadow:0 2px 3.5px rgba(0,0,0,.65)}
 .pc.t{background:none;border:none;box-shadow:none;align-items:flex-end;padding-bottom:2px;
   font-size:calc(var(--cell)*.29)}
 .pc.t.d3{font-size:calc(var(--cell)*.225)}
+/* A filter on the same element as clip-path gets clipped away with everything
+   else outside the shape, which is why the shadow was invisible. The filter
+   has to live on a parent of the clipped element. */
+.pc.t .trishadow{position:absolute;inset:0}
+.pc.t.lt .trishadow{filter:drop-shadow(0 2.5px 2.5px rgba(0,0,0,.55))}
+.pc.t.dk .trishadow{filter:drop-shadow(0 2.5px 2.5px rgba(0,0,0,.7))}
 .pc.t .tri{position:absolute;inset:0;clip-path:polygon(50% 4%,100% 96%,0 96%)}
-.pc.t.lt .tri{background:linear-gradient(160deg,#f6e5ba,var(--lt-face2));filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.45))}
-.pc.t.dk .tri{background:linear-gradient(160deg,#42301e,var(--dk-face2));filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.62))}
+.pc.t.lt .tri{background:linear-gradient(160deg,#f6e5ba,var(--lt-face2))}
+.pc.t.dk .tri{background:linear-gradient(160deg,#42301e,var(--dk-face2))}
 .pc.t span{position:relative;z-index:2}
 .pc.t.lt span{color:var(--lt-ink)}.pc.t.dk span{color:var(--dk-ink)}
 .pc.p{border-radius:3px;flex-direction:column;justify-content:center;gap:1.5px}
@@ -166,8 +182,8 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .pc.tiny.d3{font-size:6.5px}
 /* dark chips sit on a dark panel, so give them a faint light rim to separate */
 .pc.tiny.dk{box-shadow:0 0 0 1px rgba(255,236,205,.26),0 1px 2px rgba(0,0,0,.55)}
-.pc.t.tiny.dk{filter:drop-shadow(0 0 1px rgba(255,236,205,.5));box-shadow:none}
-.pc.t.tiny.dk .tri{filter:drop-shadow(0 0 1.2px rgba(255,236,205,.55))}
+.pc.t.tiny.dk{box-shadow:none}
+.pc.t.tiny.dk .trishadow{filter:drop-shadow(0 0 1.3px rgba(255,236,205,.6))}
 .pc.t.tiny{font-size:7.5px;padding-bottom:1px}
 .pc.t.tiny.d3{font-size:6px}
 .pc.p.tiny .steps{display:none}
@@ -189,15 +205,14 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   box-shadow:0 0 6px rgba(255,232,184,.45),inset 0 1px 1px rgba(0,0,0,.3)}
 .markers .hot{width:calc(var(--cell)*.34);height:calc(var(--cell)*.34);border-radius:50%;
   background:rgba(220,109,76,.72);box-shadow:0 0 9px rgba(220,109,76,.65)}
-/* dashed = your piece is in danger; solid = their piece you can take */
-.markers .cap{position:absolute;inset:1px;border-radius:50%;border:2px dashed var(--alert);
-  box-shadow:0 0 9px rgba(220,109,76,.5)}
+/* a rival piece the selected piece can take */
 .markers .prey{position:absolute;inset:1px;border-radius:50%;border:2px solid var(--alert);
   box-shadow:0 0 11px rgba(220,109,76,.6)}
 .markers .from{position:absolute;inset:4px;border-radius:6px;border:1.5px dashed rgba(255,238,200,.5)}
 .markers .to{position:absolute;inset:2px;border-radius:8px;border:1.5px solid rgba(255,238,200,.42)}
 .markers .go{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--alert);
   box-shadow:0 0 12px rgba(220,109,76,.6)}
+/* the destination keeps the thin outline */
 .markers .hint{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
   box-shadow:0 0 10px rgba(143,191,106,.5)}
 .markers .tri-win{position:absolute;inset:2px;border-radius:9px;border:2px solid var(--good);
@@ -214,10 +229,12 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 .status.alert{border-color:rgba(220,109,76,.5)}
 .status.alert .main{color:var(--alert)}
 /* after a hint, draw the eye to where the answer appeared */
-.status.hinted{border-color:var(--good);animation:hp 1.5s ease-in-out 3}
+.status.hinted{border-color:var(--good);animation:hp 1.7s ease-in-out 4}
 .status.hinted .main{color:var(--good)}
-@keyframes hp{0%,100%{box-shadow:0 0 0 0 rgba(143,191,106,0)}
-              50%{box-shadow:0 0 0 3px rgba(143,191,106,.22)}}
+@keyframes hp{
+  0%,100%{box-shadow:0 0 0 0 rgba(226,180,92,0)}
+  45%    {box-shadow:0 0 22px 7px rgba(226,180,92,.34),0 0 0 1px rgba(226,180,92,.5)}
+}
 /* once the game is over and the modal is dismissed, this becomes the way out */
 .status.asbutton{cursor:pointer;justify-content:center;text-align:center;
   border-color:var(--gold);background:linear-gradient(155deg,#3a2a17,#241809)}
@@ -329,7 +346,10 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
 
 <div class="app">
   <div class="hdr">
-    <h1>RITHMOMACHIA</h1>
+    <div class="brand">
+      <h1>RITHMOMACHIA</h1>
+      <div class="sub">THE PHILOSOPHER'S GAME</div>
+    </div>
     <div class="icons">
       <div class="tools">
         <div class="icon" id="btnHint" title="Hint">
@@ -438,6 +458,22 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
   </div>
 </div>
 
+<!-- ===== NEW GAME SETUP ===== -->
+<div class="overlay" id="ovNew">
+  <div class="sheet">
+    <h2>NEW GAME <b data-close="ovNew">✕</b></h2>
+    <div class="row"><div class="lbl">Play as<div class="desc">Dark moves first. Light has the easier numbers.</div></div></div>
+    <div class="seg" data-new="side"><div data-v="e" class="on">LIGHT</div><div data-v="o">DARK</div></div>
+    <div class="row"><div class="lbl">Victory condition<div class="desc" id="ngVc"></div></div></div>
+    <div class="seg" data-new="mode"><div data-v="pieces" class="on">BY PIECES</div><div data-v="points">BY POINTS</div><div data-v="triumph">TRIUMPH</div></div>
+    <div class="row"><div class="lbl">Rival strength</div></div>
+    <div class="seg" data-new="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
+    <div class="row"><div class="lbl">Move speed</div></div>
+    <div class="seg" data-new="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
+    <div style="padding:14px 14px 22px"><div class="btn gold" id="ngBegin"><span>BEGIN</span></div></div>
+  </div>
+</div>
+
 <!-- ===== MENU (tabbed) ===== -->
 <div class="overlay" id="ovMenu">
   <div class="sheet">
@@ -457,23 +493,14 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
         <div data-v="preview">PREVIEW ONLY</div>
         <div data-v="off">OFF</div>
       </div>
-      <div class="row"><div class="lbl">Warn me about pieces in danger<div class="desc">Rings pieces your rival could take on its next move</div></div></div>
-      <div class="seg" data-set="danger"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
       <div class="row"><div class="lbl">Board coordinates</div></div>
       <div class="seg" data-set="coords"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
       <div class="row"><div class="lbl">Vibration</div></div>
       <div class="seg" data-set="haptics"><div data-v="on" class="on">ON</div><div data-v="off">OFF</div></div>
 
-      <div class="grp">NEW GAME</div>
-      <div class="row"><div class="lbl">Play as<div class="desc">Dark moves first. Light has the easier numbers.</div></div></div>
-      <div class="seg" data-set="side"><div data-v="e" class="on">LIGHT</div><div data-v="o">DARK</div></div>
-      <div class="row"><div class="lbl">Victory condition<div class="desc" id="vcDescTxt"></div></div></div>
-      <div class="seg" data-set="mode"><div data-v="skirmish">SKIRMISH</div><div data-v="standard" class="on">STANDARD</div><div data-v="full">FULL</div></div>
-      <div class="row"><div class="lbl">Rival strength</div></div>
-      <div class="seg" data-set="level"><div data-v="novice" class="on">NOVICE</div><div data-v="scholar">SCHOLAR</div><div data-v="philosopher">PHILOSOPHER</div></div>
-      <div class="row"><div class="lbl">Move speed</div></div>
-      <div class="seg" data-set="speed"><div data-v="slow">SLOW</div><div data-v="normal" class="on">MEASURED</div><div data-v="fast">BRISK</div></div>
-      <div style="padding:14px 14px 22px"><div class="btn gold" id="btnNew"><span>START NEW GAME</span></div></div>
+      <div class="grp">THIS GAME</div>
+      <div class="row"><div class="lbl" id="curSetup"></div></div>
+      <div style="padding:6px 14px 22px"><div class="btn gold" id="btnNew"><span>START A NEW GAME</span></div></div>
     </div>
 
     <div class="tabpane" id="paneRules">
@@ -505,7 +532,7 @@ body{background:radial-gradient(120% 90% at 50% 0%,#1a140e,#0d0a07 70%);
           <li><b>Geometric</b> — equal ratios &nbsp;<span class="ex">2, 4, 8</span></li>
           <li><b>Harmonic</b> — a : c = (b−a) : (c−b) &nbsp;<span class="ex">9, 15, 45</span></li>
         </ul>
-        <p>Capturing enough pieces also wins, depending on the setting. And if you ever have <b>no legal move</b>, you lose.</p>
+        <p>That is the triumph. You agree on <b>one</b> way to win before the game starts — by pieces, by points, or by triumph — and only that one counts. Whichever you choose, if you are ever left with <b>no legal move</b>, you lose.</p>
         <h3>LIGHT AND DARK</h3>
         <p>The sources call these armies <i>Evens</i> and <i>Odds</i>, after the numbers each is built from — the first four evens (2, 4, 6, 8) or odds (3, 5, 7, 9). Only the circles keep that parity; the triangles and squares scramble it. Dark's pieces are worth more in total, which is less of an advantage than it sounds: it means your rival scores faster off them. Dark moves first to compensate for Light's more flexible small numbers.</p>
       </div>
@@ -776,6 +803,9 @@ function pairBonus(S,side){
   }
   return n;
 }
+/* The rival plays for whatever actually wins this game — chasing a triumph
+   in a capture game would just be throwing pieces away. */
+let RULE_MODE='pieces';
 function capScore(caps){ let s=0; for(const c of caps) s+=45+c.value*0.35; return s; }
 function scoreAfter(S,side,caps){
   let s=capScore(caps), terr=0, pyr=0;
@@ -784,8 +814,13 @@ function scoreAfter(S,side,caps){
     if(inTerr(side,p.r)) terr++;
     if(p.shape==='p') pyr=1;
   }
-  s+=terr*5 + pairBonus(S,side)*8 + pyr*25;
-  if(findTriumph(S,side)) s+=9000;
+  s+=pyr*25;
+  if(RULE_MODE==='triumph'){
+    s+=terr*9 + pairBonus(S,side)*14;
+    if(findTriumph(S,side)) s+=9000;
+  }else{
+    s+=terr*2;                       // advancing is still mildly useful
+  }
   return s;
 }
 function bestReply(S,side){
@@ -793,7 +828,7 @@ function bestReply(S,side){
   for(const mv of genMoves(S,side)){
     const S2=clone(S); const caps=applyMove(S2,mv);
     let v=capScore(caps);
-    if(findTriumph(S2,side)) v+=9000;
+    if(RULE_MODE==='triumph'&&findTriumph(S2,side)) v+=9000;
     if(v>best) best=v;
   }
   return best;
@@ -819,12 +854,15 @@ function chooseMove(S,side,level){
   return top[0].mv;
 }
 const capTotal=list=>list.reduce((a,b)=>a+b.v,0);
+/* One condition per game, agreed before play — the way it was actually done.
+   A triumph only wins in triumph mode; captures only win in the capture modes. */
 function checkWin(S,side,mode){
-  const t=findTriumph(S,side);
-  if(t) return {winner:side,how:'triumph',triumph:t};
-  const n=S.caps[side].length, v=capTotal(S.caps[side]);
-  if(mode==='skirmish'&&(n>=5||v>=150)) return {winner:side,how:'captures'};
-  if(mode==='standard'&&n>=8) return {winner:side,how:'captures'};
+  if(mode==='triumph'){
+    const t=findTriumph(S,side);
+    return t ? {winner:side,how:'triumph',triumph:t} : null;
+  }
+  if(mode==='pieces'&&S.caps[side].length>=8) return {winner:side,how:'captures'};
+  if(mode==='points'&&capTotal(S.caps[side])>=150) return {winner:side,how:'captures'};
   return null;
 }
 </script>
@@ -842,10 +880,14 @@ function readCell(){
 }
 readCell();
 
-let S, human='e', ai='o', mode='standard', level='novice', speed='normal';
-let aids='both', dangerOn=true, coordsOn=true, hapticsOn=true;
+let S, human='e', ai='o', mode='pieces', level='novice', speed='normal';
+let aids='both', coordsOn=true, hapticsOn=true;
 let busy=false, over=false, selected=null, hintMv=null, undoStack=[];
 let dangerCache=null, lastResult=null, endSummary='';
+/* Any in-flight turn belongs to a generation. Starting a new game bumps it, so
+   a move already mid-animation can't land on a board that no longer exists. */
+let gen=0, started=false;
+const stale=g=>g!==gen;
 const els=new Map(), learnMuted=new Set();
 
 const $=id=>document.getElementById(id);
@@ -871,7 +913,9 @@ function chipNode(v,shape,side,size,steps){
   const el=document.createElement('div');
   el.className='pc '+shape+' '+(side==='e'?'lt':'dk')+(size?' '+size:'')+(String(v).length>2?' d3':'');
   if(shape==='t'){
-    const t=document.createElement('div'); t.className='tri'; el.appendChild(t);
+    const sh=document.createElement('div'); sh.className='trishadow';
+    const t=document.createElement('div'); t.className='tri';
+    sh.appendChild(t); el.appendChild(sh);
     const s=document.createElement('span'); s.textContent=v; el.appendChild(s);
   }else if(shape==='p'){
     const st=document.createElement('div'); st.className='steps';
@@ -955,9 +999,10 @@ function rebuild(){
 }
 
 /* ---------- markers ---------- */
+const cellAt=(r,c)=>$('cells').children[dR(r)*8+dC(c)];
 function clearMarks(){
   $('markers').innerHTML='';
-  for(const w of els.values()) w.classList.remove('doomed');
+  for(const el of $('cells').children) el.classList.remove('hintfrom');
 }
 function mark(r,c,inner){
   const m=document.createElement('div'); m.className='mk';
@@ -967,7 +1012,9 @@ function mark(r,c,inner){
 }
 let lastFrom=null,lastTo=null;
 
-/* which of my pieces could the rival actually take on its next move? */
+/* Which of my pieces the rival could actually take on its next move. No longer
+   drawn on the board — it only feeds the "rescues your X" hint reason, so it's
+   computed on demand rather than every turn. */
 function dangerSet(){
   if(dangerCache) return dangerCache;
   const out=new Set();
@@ -989,14 +1036,11 @@ function showSelection(){
   if(lastFrom) mark(lastFrom[0],lastFrom[1],'from');
   if(lastTo) mark(lastTo[0],lastTo[1],'to');
 
-  /* Danger rings only while nothing is selected — otherwise two similar-looking
-     ring markers compete on screen and neither reads clearly. */
-  if(dangerOn&&!over&&S.turn===human&&selected==null&&dangerCache){
-    for(const id of dangerCache){
-      const T=S.pieces[id]; if(T&&T.alive) mark(T.r,T.c,'cap');
-    }
+  if(hintMv){
+    const cf=cellAt(hintMv.fr,hintMv.fc);
+    if(cf) cf.classList.add('hintfrom');
+    mark(hintMv.tr,hintMv.tc,'hint');
   }
-  if(hintMv){ mark(hintMv.fr,hintMv.fc,'hint'); mark(hintMv.tr,hintMv.tc,'hint'); }
 
   if(selected!=null){
     const p=S.pieces[selected];
@@ -1016,9 +1060,8 @@ function showSelection(){
 
 /* ---------- panels ---------- */
 function progressText(side){
-  const n=S.caps[side].length, v=capTotal(S.caps[side]);
-  if(mode==='standard') return `${n}/8 pcs`;
-  if(mode==='skirmish') return (v/150 >= n/5) ? `${v}/150 pts` : `${n}/5 pcs`;
+  if(mode==='pieces') return `${S.caps[side].length}/8 pcs`;
+  if(mode==='points') return `${capTotal(S.caps[side])}/150 pts`;
   const t=S.pieces.filter(p=>p.alive&&p.side===side&&inTerr(side,p.r)).length;
   return `${Math.min(t,3)}/3 in camp`;
 }
@@ -1137,6 +1180,48 @@ function showLesson(c,byHuman){
   });
 }
 
+function flashAt(w){
+  if(!w) return;
+  const f=document.createElement('div'); f.className='flash';
+  w.appendChild(f); setTimeout(()=>f.remove(),420);
+}
+/* the captured piece travels to the shelf so you can see where it went */
+/* onLift clears the piece off the board at the exact moment the travelling
+   chip becomes visible, so there is never a copy in two places at once */
+function flyToTray(c,tw,side,onLift){
+  return new Promise(resolve=>{
+    if(!tw){ if(onLift) onLift(); resolve(); return; }
+    const tray = side===human ? $('trayBot') : $('trayTop');
+    const src=tw.getBoundingClientRect();
+    const dst=tray.getBoundingClientRect();
+    if(!src.width||!dst.width){ if(onLift) onLift(); resolve(); return; }
+
+    const CHIP=20, STEP=23;
+    // land after the chips already on the shelf; if there's no room left,
+    // go to the far right edge and fade out there rather than scrolling
+    let tx=dst.left+tray.children.length*STEP+CHIP/2;
+    const full = tx > dst.right-CHIP/2;
+    if(full) tx=dst.right-CHIP/2;
+    const ty=dst.top+dst.height/2;
+
+    const durN=0.62*SPD(), dur=durN.toFixed(2), fadeAt=(durN*0.55).toFixed(2);
+    const ghost=chipNode(c.value,c.tgt.shape,c.tgt.side,'tiny');
+    ghost.style.cssText=
+      'position:fixed;left:0;top:0;z-index:80;pointer-events:none;'+
+      `transform:translate(${src.left+src.width/2-CHIP/2}px,${src.top+src.height/2-CHIP/2}px) scale(1.8);`+
+      `transition:transform ${dur}s cubic-bezier(.4,0,.25,1),opacity .28s ease ${fadeAt}s;`;
+    document.body.appendChild(ghost);
+    requestAnimationFrame(()=>{
+      if(onLift) onLift();            // ghost has painted; clear the board copy
+      requestAnimationFrame(()=>{
+        ghost.style.transform=`translate(${tx-CHIP/2}px,${ty-CHIP/2}px) scale(1)`;
+        if(full) ghost.style.opacity='0';
+      });
+    });
+    setTimeout(()=>{ ghost.remove(); resolve(); }, 700*SPD());
+  });
+}
+
 /* ---------- turn loop ---------- */
 async function startTurn(){
   if(over) return;
@@ -1150,18 +1235,20 @@ async function startTurn(){
     busy=false; selected=null;
     setStatus('Your move','Tap one of your pieces');
     showSelection();
-    if(dangerOn) setTimeout(()=>{ dangerSet(); if(!busy&&!over) showSelection(); },30);
   }else{
     busy=true; selected=null;
     setStatus('Rival is considering…','');
     showSelection();
+    const g=gen;
     await sleep(700);
+    if(stale(g)) return;
     const mv=chooseMove(S,ai,level);
     if(!mv){ endGame({winner:human,how:'blocked'}); return; }
     await performMove(mv);
   }
 }
 async function performMove(mv){
+  const g=gen;
   busy=true; selected=null; hintMv=null; dangerCache=null;
   $('statusPanel').classList.remove('hinted');
   clearMarks();
@@ -1179,33 +1266,40 @@ async function performMove(mv){
   setStatus(byHuman?'You moved':'Rival moved',desc);
   log((byHuman?'You: ':'Rival: ')+desc, byHuman?'you':'');
   await sleep(520);
+  if(stale(g)) return;
   w.classList.remove('lift');
   showSelection();
 
   for(const c of caps){
+    if(stale(g)) return;
     const T=S.pieces[c.tid], tw=els.get(c.tid);
-    if(tw){ const f=document.createElement('div'); f.className='flash';
-      tw.appendChild(f); setTimeout(()=>f.remove(),400); }
-    buzz(byHuman?28:[0,18,50,18]);
     const who=byHuman?'You captured':'Rival captured';
     log(`   ↳ ${who} ${c.desc} at ${c.sq} ${c.text}`,'took');
     setStatus(who+' '+c.desc, c.text, !byHuman);
-    await sleep(300);
-    if(c.comp<0){
-      if(tw){ tw.classList.add('dying');
-        requestAnimationFrame(()=>tw.classList.add('gone'));
-        setTimeout(()=>tw.remove(),480);
-        els.delete(c.tid); }
-    }else if(tw&&T.alive) paint(tw,T);
+
+    // three flashes, a beat before the first and between each
+    for(let i=0;i<3;i++){
+      await sleep(333);
+      flashAt(tw);
+      if(i===0) buzz(byHuman?28:[0,18,50,18]);
+    }
+    await sleep(220);
+
+    await flyToTray(c,tw,side,()=>{      // and then it travels to the shelf
+      if(c.comp<0){ if(tw){ tw.remove(); els.delete(c.tid); } }
+      else if(tw&&T.alive) paint(tw,T);  // pyramid stays, minus one component
+    });
     updatePanels();
-    await sleep(260);
+    await sleep(150);
     if(explainOn()&&!learnMuted.has(c.kind)) await showLesson(c,byHuman);
   }
+  if(stale(g)) return;
   updatePanels(); showSelection();
 
   const res=checkWin(S,side,mode);
   if(res){ endGame(res); return; }
   await sleep(430);
+  if(stale(g)) return;
   startTurn();
 }
 
@@ -1293,8 +1387,10 @@ function hintReason(mv){
   const before=dangerSet();
   const S2=clone(S); const caps=applyMove(S2,mv);
   if(caps.length) return `Takes their ${caps[0].desc} ${caps[0].text}.`;
-  const t=findTriumph(S2,human);
-  if(t) return `Completes a ${t.type} triumph: ${t.vals.join(', ')}.`;
+  if(mode==='triumph'){
+    const t=findTriumph(S2,human);
+    if(t) return `Completes a ${t.type} triumph: ${t.vals.join(', ')}.`;
+  }
   if(before.has(mv.id)){
     const after=new Set();
     for(const m2 of genMoves(S2,ai)){
@@ -1306,8 +1402,10 @@ function hintReason(mv){
       return `Rescues your ${SHAPE_NAME[p.shape]} ${p.v} from capture.`;
     }
   }
-  if(inTerr(human,mv.tr)&&!inTerr(human,mv.fr)) return 'Crosses into enemy ground, where triumphs must be built.';
-  if(pairBonus(S2,human)>pairBonus(S,human)) return 'Lines up two values that could grow into a progression.';
+  if(mode==='triumph'){
+    if(inTerr(human,mv.tr)&&!inTerr(human,mv.fr)) return 'Crosses into enemy ground, where triumphs must be built.';
+    if(pairBonus(S2,human)>pairBonus(S,human)) return 'Lines up two values that could grow into a progression.';
+  }
   return 'Safe development — keeps your options open.';
 }
 $('btnHint').onclick=()=>{
@@ -1327,16 +1425,69 @@ $('btnHint').onclick=()=>{
     showSelection();
   },30);
 };
-$('btnUndo').onclick=()=>{
+/* Undo replays the turn backwards, in order, so you can see what is being
+   taken back: captured pieces return first, then the rival's move, then yours. */
+async function undoAnimated(){
   if(busy&&!over) return;
   if(!undoStack.length) return;
-  S=undoStack.pop(); over=false; busy=false; selected=null; hintMv=null;
-  dangerCache=null; lastFrom=null; lastTo=null;
+  busy=true;
+  const F=0.72;                                   // a shade quicker than play
   $('ovEnd').classList.remove('open');
   $('statusPanel').classList.remove('asbutton','hinted');
-  rebuild(); log('— undo —');
+  over=false; selected=null; hintMv=null; dangerCache=null;
+  lastFrom=null; lastTo=null; clearMarks();
+
+  const prev=undoStack.pop(), cur=S;
+  const revived=[], moved=[], regrown=[];
+  for(const p of prev.pieces){
+    const q=cur.pieces[p.id];
+    if(p.alive&&!q.alive) revived.push(p);
+    else if(p.alive&&q.alive){
+      if(p.r!==q.r||p.c!==q.c) moved.push(p);
+      if(p.comps&&q.comps&&p.comps.length!==q.comps.length) regrown.push(p);
+    }
+  }
+  S=prev;
+  setStatus('Taking that back…','');
+
+  // 1 — anything captured comes back to where it stood
+  for(const p of revived.concat(regrown)){
+    let w=els.get(p.id);
+    if(!w){
+      w=pieceNode(p);
+      w.style.transition='none';
+      place(w,p);
+      w.style.opacity='0';
+      $('piecelayer').appendChild(w); els.set(p.id,w);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        w.style.transition='opacity .34s ease';
+        w.style.opacity='1';
+        setTimeout(()=>{ w.style.transition=''; },380);
+      }));
+    }else paint(w,p);                              // a pyramid regaining a part
+    flashAt(w);
+    updatePanels();
+    await sleep(430*F);
+  }
+  // 2 — the rival's piece goes back, then 3 — yours
+  for(const who of [ai,human]){
+    for(const p of moved.filter(x=>x.side===who)){
+      const w=els.get(p.id);
+      if(!w) continue;
+      w.classList.add('lift');
+      await sleep(100*F);
+      place(w,p);
+      await sleep(520*F);
+      w.classList.remove('lift');
+      await sleep(130*F);
+    }
+  }
+  updatePanels();
+  log('— undo —');
+  busy=false;
   startTurn();
-};
+}
+$('btnUndo').onclick=()=>undoAnimated();
 $('btnMenu').onclick=()=>{ $('ovMenu').classList.add('open'); syncPanes(); };
 /* dismissing the end modal must not strand the player — the status strip
    becomes the way to start again */
@@ -1346,11 +1497,21 @@ function armNewGameStrip(){
   $('stNote').textContent=endSummary;
 }
 $('endClose').onclick=()=>{ $('ovEnd').classList.remove('open'); armNewGameStrip(); };
-$('endNew').onclick=()=>{ $('ovEnd').classList.remove('open'); newGame(); };
-$('statusPanel').onclick=()=>{ if(over&&$('statusPanel').classList.contains('asbutton')) newGame(); };
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
+$('endNew').onclick=openNewGame;
+$('statusPanel').onclick=()=>{
+  if(over&&$('statusPanel').classList.contains('asbutton')) openNewGame();
+};
+/* dismissing the setup card without pressing Begin still has to start the game */
+function resumeAfterSetup(){ if(!started){ started=true; startTurn(); } }
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
+  $(b.dataset.close).classList.remove('open');
+  if(b.dataset.close==='ovNew') resumeAfterSetup();
+});
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
-  if(e.target===o&&o.id!=='ovLesson'&&o.id!=='ovEnd') o.classList.remove('open');
+  if(e.target===o&&o.id!=='ovLesson'&&o.id!=='ovEnd'){
+    o.classList.remove('open');
+    if(o.id==='ovNew') resumeAfterSetup();
+  }
 }));
 
 /* ---------- tabs ---------- */
@@ -1391,17 +1552,52 @@ document.querySelectorAll('.seg[data-set]').forEach(seg=>{
     if(k==='level') level=v;
     if(k==='speed') speed=v;
     if(k==='haptics') hapticsOn=(v==='on');
-    if(k==='danger'){ dangerOn=(v==='on'); if(dangerOn&&!busy&&!over) dangerSet(); showSelection(); }
     if(k==='coords'){ coordsOn=(v==='on'); buildCoords(); }
     if(k==='aids'){ aids=v; learnMuted.clear(); showSelection(); }
     descs();
   });
 });
+
+/* ---------- new game setup ---------- */
+const VC={
+  pieces:'First to capture 8 of your rival’s pieces wins.',
+  points:'First to capture pieces worth 150 in total wins.',
+  triumph:'Win only by standing three pieces in enemy ground — in line, evenly spaced, forming an arithmetic, geometric or harmonic progression.'};
+const VCSHORT={pieces:'By pieces — 8 captures',
+               points:'By points — 150',
+               triumph:'By triumph'};
+const LVL={novice:'Novice',scholar:'Scholar',philosopher:'Philosopher'};
+/* staged, not live: changing these mid-game and carrying on made no sense */
+const staged={side:'e',mode:'pieces',level:'novice',speed:'normal'};
+document.querySelectorAll('.seg[data-new]').forEach(seg=>{
+  seg.querySelectorAll('div').forEach(d=>d.onclick=()=>{
+    seg.querySelectorAll('div').forEach(x=>x.classList.remove('on'));
+    d.classList.add('on');
+    staged[seg.dataset.new]=d.dataset.v;
+    $('ngVc').textContent=VC[staged.mode];
+  });
+});
+function openNewGame(){
+  staged.side=human; staged.mode=mode; staged.level=level; staged.speed=speed;
+  document.querySelectorAll('.seg[data-new]').forEach(seg=>{
+    const k=seg.dataset.new;
+    seg.querySelectorAll('div').forEach(d=>d.classList.toggle('on',d.dataset.v===staged[k]));
+  });
+  $('ngVc').textContent=VC[staged.mode];
+  $('ovMenu').classList.remove('open');
+  $('ovEnd').classList.remove('open');
+  $('ovNew').classList.add('open');
+}
+$('ngBegin').onclick=()=>{
+  human=staged.side; ai=other(human);
+  mode=staged.mode; level=staged.level; speed=staged.speed;
+  $('ovNew').classList.remove('open');
+  newGame();
+};
+
 function descs(){
-  $('vcDescTxt').textContent = mode==='skirmish'
-    ? 'Skirmish — 5 captures, 150 points, or a triumph'
-    : mode==='standard' ? 'Standard — 8 captures, or a triumph'
-    : 'Full — triumph only, as the philosophers played it';
+  $('curSetup').innerHTML=`You are ${human==='e'?'Light':'Dark'}`+
+    `<div class="desc">${VCSHORT[mode]}<br>Rival: ${LVL[level]}</div>`;
   $('aidDesc').innerHTML = aids==='both'
     ? 'Marks moves that capture, previews what falls before you commit, and explains the arithmetic afterwards.<div class="desc">Best while you are learning the four capture types.</div>'
     : aids==='preview'
@@ -1409,7 +1605,7 @@ function descs(){
       : 'No marks, no preview, no explanations.<div class="desc">Captures simply happen, as at a real board.</div>';
   if(S&&!busy&&!over) updatePanels();   // descs() also runs before the first game exists
 }
-$('btnNew').onclick=()=>{ $('ovMenu').classList.remove('open'); newGame(); };
+$('btnNew').onclick=openNewGame;
 
 /* ---------- viewport ---------- */
 let rzTimer=null;
@@ -1544,12 +1740,25 @@ function runSelfTest(){
   ok('Dark triumphs in rows 8-15',!!tri([3,5,7],[[10,0],[10,2],[10,4]],'o'));
 
   /* progress readouts */
+  /* one condition per mode, and only that one */
   { const St=mkState();
     St.caps.e=[{v:40,shape:'c'},{v:60,shape:'s'}];
-    const n=St.caps.e.length, v=capTotal(St.caps.e);
-    ok('Capture total sums values', v===100, String(v));
-    ok('Standard progress reads n/8', `${n}/8 pcs`==='2/8 pcs');
-    ok('Skirmish prefers the nearer line', (v/150>=n/5), `${(v/150).toFixed(2)} vs ${(n/5).toFixed(2)}`);
+    ok('Capture total sums values', capTotal(St.caps.e)===100);
+    ok('7 pieces is not yet a win by pieces', !checkWin(St,'e','pieces'));
+    St.caps.e=Array.from({length:8},()=>({v:5,shape:'c'}));
+    ok('8 pieces wins by pieces', (checkWin(St,'e','pieces')||{}).how==='captures');
+    ok('8 small pieces do not win by points', !checkWin(St,'e','points'), '40 pts');
+    St.caps.e=[{v:150,shape:'s'}];
+    ok('150 points wins by points', (checkWin(St,'e','points')||{}).how==='captures');
+    ok('One big capture does not win by pieces', !checkWin(St,'e','pieces'));
+    ok('Captures never win in triumph mode', !checkWin(St,'e','triumph'));
+  }
+  { /* and a triumph only counts in triumph mode */
+    const cells=[[2,0],[2,2],[2,4]], vals=[2,4,6];
+    const St=tState(vals.map((v,i)=>P('e','c',v,cells[i][0],cells[i][1])));
+    ok('Triumph wins in triumph mode', (checkWin(St,'e','triumph')||{}).how==='triumph');
+    ok('Triumph does not win by pieces', !checkWin(St,'e','pieces'));
+    ok('Triumph does not win by points', !checkWin(St,'e','points'));
   }
 
   { let crashes=0,bad=0,plies=0,games=0,wins={triumph:0,captures:0,blocked:0,draw:0};
@@ -1568,7 +1777,7 @@ function runSelfTest(){
           }
           for(let i=0;i<128;i++){ const id=St.grid[i];
             if(id>=0){ const p=St.pieces[id]; if(!p.alive||p.r*8+p.c!==i) bad++; } }
-          const w=checkWin(St,side,'standard');
+          const w=checkWin(St,side,'pieces');
           if(w){ wins[w.how]++; break; }
         }
         plies+=n; games++;
@@ -1621,7 +1830,9 @@ function runSelfTest(){
 }
 
 /* ---------- new game ---------- */
-function newGame(){
+function newGame(autostart=true){
+  gen++;
+  RULE_MODE=mode;                             // tell the rival what it's playing for
   S=mkState(); over=false; busy=false; selected=null; hintMv=null;
   undoStack=[]; lastFrom=null; lastTo=null; lastResult=null;
   dangerCache=null; endSummary='';
@@ -1629,9 +1840,12 @@ function newGame(){
   $('logPanel').innerHTML='';
   $('ovEnd').classList.remove('open');
   $('statusPanel').classList.remove('asbutton','hinted');
+  descs();                                    // reflect the chosen setup
   rebuild();
-  log(`— New game · you are ${human==='e'?'Light':'Dark'} · ${mode} · ${level} —`);
-  startTurn();
+  log(`— New game · you are ${human==='e'?'Light':'Dark'} · ${VCSHORT[mode]} · rival ${LVL[level]} —`);
+  started=autostart;
+  if(autostart) startTurn();
+  else{ updatePanels(); setStatus('Ready','Choose your setup, then Begin'); }
 }
 const _perform=performMove;
 performMove=async function(mv){
@@ -1642,7 +1856,8 @@ performMove=async function(mv){
    board — an empty board with no explanation cost us a round trip once. */
 try{
   descs();
-  if(location.search.includes('test')) runSelfTest(); else newGame();
+  if(location.search.includes('test')) runSelfTest();
+  else { newGame(false); openNewGame(); }   // board behind, setup card in front
 }catch(err){
   const line=(err&&err.stack||'').split('\n')[1]||'';
   document.querySelector('.app').insertAdjacentHTML('afterbegin',
